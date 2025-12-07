@@ -25,20 +25,27 @@ jobs:
       - name: Build HTML
         run: |
           mkdir -p public/docs
-          asciidoctor -o public/docs/index.html docs/isekai-quest-agency.adoc
-          # ルートからでもアクセスできるよう簡易リダイレクトページを配置
+          cp -r docs/* public/docs/
+          find public/docs -name '*.adoc' | while read f; do
+            out="${f%.adoc}.html"
+            asciidoctor -o "$out" "$f"
+            rm "$f"
+          done
+          # HTMLを自動列挙するインデックスを生成
           cat > public/index.html <<'EOF'
-          <!doctype html>
-          <html lang="ja">
-          <head>
+          <!doctype html><html lang="ja"><head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0; url=./docs/">
-            <title>isekai-quest-agency docs</title>
-          </head>
-          <body>
-            <p><a href="./docs/">Docsはこちら</a></p>
-          </body>
-          </html>
+            <title>isekai-quest-agency docs index</title>
+          </head><body>
+            <h1>Docs index</h1>
+            <ul>
+          EOF
+          find public/docs -name '*.html' | sort | sed 's|public/||' | while read p; do
+            echo "<li><a href=\"./${p}\">${p}</a></li>" >> public/index.html
+          done
+          cat >> public/index.html <<'EOF'
+            </ul>
+          </body></html>
           EOF
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
