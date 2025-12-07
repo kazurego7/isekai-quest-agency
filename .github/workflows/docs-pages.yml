@@ -25,7 +25,8 @@ jobs:
       - name: Build HTML
         run: |
           mkdir -p public
-          asciidoctor -o public/isekai-quest-agency.html docs/isekai-quest-agency.adoc
+          asciidoctor -o public/index.html docs/isekai-quest-agency.adoc
+          cp public/index.html public/isekai-quest-agency.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
