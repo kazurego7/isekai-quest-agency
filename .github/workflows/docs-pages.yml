@@ -1,0 +1,41 @@
+name: docs-pages
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup asciidoctor
+        run: sudo apt-get update && sudo apt-get install -y asciidoctor
+      - name: Build HTML
+        working-directory: docs
+        run: asciidoctor -o isekai-quest-agency.html isekai-quest-agency.adoc
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/isekai-quest-agency.html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
