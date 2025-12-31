@@ -1,13 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: light;
-  --ink: #201b16;
-  --ink-soft: #5c534b;
-  --surface: #f6efe3;
-  --surface-strong: #f0e5d6;
-  --accent: #d55c2a;
-  --accent-strong: #a73b12;
-  --mint: #5e826d;
-  --shadow: rgba(32, 27, 22, 0.15);
+  --background: 38 51% 93%;
+  --foreground: 30 19% 11%;
+  --card: 38 51% 96%;
+  --card-foreground: 30 19% 11%;
+  --popover: 38 51% 96%;
+  --popover-foreground: 30 19% 11%;
+  --primary: 18 67% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 145 16% 44%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 35 46% 89%;
+  --muted-foreground: 28 10% 33%;
+  --accent: 35 46% 89%;
+  --accent-foreground: 30 19% 11%;
+  --destructive: 17 81% 36%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 12% 80%;
+  --input: 30 12% 80%;
+  --ring: 18 67% 50%;
+  --radius: 0.9rem;
+  --ink: 30 19% 11%;
+  --ink-soft: 28 10% 33%;
+  --mint: 145 16% 44%;
 }
 
 *,
@@ -22,20 +41,29 @@ body {
   overflow-x: hidden;
 }
 
-body {
-  margin: 0;
-  color: var(--ink);
-  background: radial-gradient(circle at top left, #fff3dd 0%, #f8edda 40%, #efe0c8 100%);
-  font-family: var(--font-gothic), "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  * {
+    @apply border-border;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  body {
+    margin: 0;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(circle at top left, #fff3dd 0%, #f8edda 40%, #efe0c8 100%);
+    font-family: var(--font-gothic), "Hiragino Kaku Gothic ProN", "Yu Gothic",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 
-button {
-  font-family: inherit;
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font-family: inherit;
+  }
 }
