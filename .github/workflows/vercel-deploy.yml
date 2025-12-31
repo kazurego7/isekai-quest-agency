@@ -3,8 +3,10 @@ name: Deploy to Vercel
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
@@ -36,25 +38,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Vercel pull (preview)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
         run: pnpm dlx vercel@latest pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Vercel build (preview)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
         run: pnpm dlx vercel@latest build --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Vercel deploy (preview)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
         run: pnpm dlx vercel@latest deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Vercel pull (production)
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'release'
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Vercel build (production)
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'release'
         run: pnpm dlx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Vercel deploy (production)
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'release'
         run: pnpm dlx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
