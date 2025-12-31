@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import Link from "next/link";
 import { useState } from "react";
 
 const heroStats = [
@@ -379,6 +380,9 @@ export default function Home() {
             </Button>
             <Button variant="outline" size="sm">
               デモを予約
+            </Button>
+            <Button asChild size="sm" className="bg-secondary text-ink hover:bg-secondary/90">
+              <Link href="/requester">依頼者モックを開く</Link>
             </Button>
           </div>
         </header>
