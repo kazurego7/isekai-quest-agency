@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,13 +81,31 @@ const requesterView = {
 };
 
 export default function RequesterPage() {
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+
+  const primaryAction = requesterView.actions[0];
+  const secondaryAction = requesterView.actions[1];
+  const supplementalActions = requesterView.actions.slice(2);
+  const featuredLane = requesterView.laneItems[0];
+
+  const getAlertCtaLabel = useMemo(
+    () => ({
+      質問: "回答する",
+      進行中: "進捗を見る",
+      完了: "履歴を確認",
+    }),
+    [],
+  );
+
+  const isNearDeadline = (meta) => meta?.includes("期限");
+
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-gradient-to-b from-white via-white to-primary/5">
       <div className="pointer-events-none absolute right-[-25%] top-[-20%] h-[320px] w-[320px] rounded-full bg-primary/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-15%] left-[-20%] h-[320px] w-[320px] rounded-full bg-secondary/25 blur-3xl" />
 
       <div className="relative z-10 px-5 pb-20 pt-8 md:px-10">
-        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-secondary text-ink">
@@ -101,17 +120,39 @@ export default function RequesterPage() {
               下書き保存、提出、受付とのやりとりをスマホから完結。進捗と次の一手を1画面で確認できます。
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
               <Link href="/">トップへ戻る</Link>
             </Button>
             <Button size="sm" className="w-full sm:w-auto">
-              下書きを提出
+              {primaryAction.title}
+            </Button>
+            <Button variant="secondary" size="sm" className="w-full sm:w-auto">
+              {secondaryAction.title}
             </Button>
           </div>
         </header>
 
         <div className="space-y-6">
+          <section className="rounded-2xl border border-primary/15 bg-white/95 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground">いま注力する依頼</p>
+                <h2 className="text-lg font-semibold text-ink">{featuredLane.title}</h2>
+              </div>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
+                {featuredLane.status}
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">{featuredLane.meta}</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Button className="w-full sm:w-auto">{primaryAction.title}</Button>
+              <Button variant="outline" className="w-full sm:w-auto">
+                進捗を見る
+              </Button>
+            </div>
+          </section>
+
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {requesterView.metrics.map((metric) => (
               <Card key={metric.label} className="border-none bg-white/90 shadow-sm">
@@ -132,11 +173,13 @@ export default function RequesterPage() {
               </div>
               <Badge variant="muted">{requesterView.laneItems.length} 件</Badge>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3">
               {requesterView.laneItems.map((item) => (
                 <Card
                   key={item.title}
-                  className="border border-border/60 bg-background/80 shadow-none"
+                  className={`border border-border/60 shadow-none ${isNearDeadline(item.meta) ? "bg-amber-50" : "bg-background/80"}`}
+                  role="button"
+                  tabIndex={0}
                 >
                   <CardContent className="space-y-2 p-4">
                     <div className="flex items-center justify-between gap-2">
@@ -152,28 +195,48 @@ export default function RequesterPage() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {requesterView.panels.map((panel) => (
-              <Card key={panel.title} className="border border-border/60 bg-white/90">
-                <CardHeader>
-                  <CardTitle className="text-lg">{panel.title}</CardTitle>
-                  <CardDescription>スマホでも確認しやすいガイド</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {panel.items.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2"
-                      >
-                        <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
+          <section className="space-y-3">
+            {requesterView.panels.map((panel) => {
+              const isGuidePanel = panel.title === "入力ガイド";
+              const isOpen = isGuidePanel ? isGuideOpen : true;
+              return (
+                <Card key={panel.title} className="border border-border/60 bg-white/90">
+                  <CardHeader
+                    className={`cursor-pointer ${isGuidePanel ? "sm:cursor-pointer" : "cursor-default"}`}
+                    onClick={() => {
+                      if (isGuidePanel) setIsGuideOpen((prev) => !prev);
+                    }}
+                  >
+                    <CardTitle className="text-lg flex items-center justify-between gap-3">
+                      <span>{panel.title}</span>
+                      {isGuidePanel && (
+                        <Badge variant="outline" className="text-xs">
+                          {isOpen ? "閉じる" : "開く"}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      {isGuidePanel ? "必要な項目をチェックしながら入力" : "スマホでも確認しやすいガイド"}
+                    </CardDescription>
+                  </CardHeader>
+                  {isOpen && (
+                    <CardContent>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        {panel.items.map((item) => (
+                          <li
+                            key={item}
+                            className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2"
+                          >
+                            <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
           </section>
 
           <section className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr,0.9fr]">
@@ -183,15 +246,9 @@ export default function RequesterPage() {
                   <CardTitle className="text-lg">主要アクション</CardTitle>
                   <CardDescription>依頼者がすぐに行える操作</CardDescription>
                 </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                  <Button className="w-full sm:w-auto">下書きを提出</Button>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    前回依頼をコピー
-                  </Button>
-                </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {requesterView.actions.map((action) => (
+                {supplementalActions.map((action) => (
                   <div
                     key={action.title}
                     className="rounded-lg border border-border/60 bg-background/70 px-3 py-3"
@@ -250,7 +307,7 @@ export default function RequesterPage() {
                         </div>
                       </div>
                       <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                        次のアクション
+                        {getAlertCtaLabel[alert.label] ?? "確認する"}
                       </Button>
                     </div>
                   ))}
