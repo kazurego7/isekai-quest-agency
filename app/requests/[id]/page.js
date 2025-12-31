@@ -22,7 +22,7 @@ const mockRequests = {
       { label: "報酬上限", value: "90,000G" },
     ],
     notes: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
-    next: "進捗報告を確認して返信",
+    next: "変更依頼 or 取り消し依頼が可能",
   },
   "req-002": {
     title: "討伐 / 湿地帯の魔蛇",
@@ -33,7 +33,7 @@ const mockRequests = {
       { label: "期限", value: "緊急 / 3日以内に対応希望" },
       { label: "報酬上限", value: "120,000G" },
     ],
-    notes: "危険度の補足を追記すると審査が早まります。",
+    notes: "審査前は取り下げのみ可能。内容変更は不可です。",
     next: "受付の見積りを待機",
   },
   "req-003": {
@@ -48,12 +48,39 @@ const mockRequests = {
     notes: "納品先と品質条件を追記してから送信してください。",
     next: "条件を確認して送信",
   },
+  "req-004": {
+    title: "討伐 / 森の魔狼",
+    status: "完了",
+    details: [
+      { label: "目的", value: "森の魔狼の討伐" },
+      { label: "場所", value: "北の森 / 周辺の村" },
+      { label: "期限", value: "完了済み" },
+      { label: "報酬上限", value: "150,000G" },
+    ],
+    notes: "完了後の取り下げや変更は不可。記録の参照のみ。",
+    next: "参照のみ",
+  },
 };
 
 const statusStyle = {
   進行中: "default",
   審査待ち: "secondary",
   下書き: "outline",
+  完了: "muted",
+};
+
+const actionsByStatus = {
+  下書き: [
+    { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
+    { label: "送信（ダミー）", href: "/requests", variant: "default" },
+    { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
+  ],
+  審査待ち: [{ label: "取り下げ（審査前）", href: "/requests", variant: "outline" }],
+  進行中: [
+    { label: "変更依頼を送る（ダミー）", href: "/requests", variant: "outline" },
+    { label: "取り消し依頼を送る（ダミー）", href: "/requests", variant: "ghost" },
+  ],
+  完了: [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
 };
 
 export default function RequestDetail({ params }) {
@@ -108,12 +135,11 @@ export default function RequestDetail({ params }) {
             </Card>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline">
-              進捗を更新（ダミー）
-            </Button>
-            <Button size="sm" variant="ghost">
-              受付に相談（ダミー）
-            </Button>
+            {(actionsByStatus[request.status] ?? []).map((action) => (
+              <Button key={action.label} size="sm" variant={action.variant} asChild>
+                <Link href={action.href}>{action.label}</Link>
+              </Button>
+            ))}
           </CardFooter>
         </Card>
 

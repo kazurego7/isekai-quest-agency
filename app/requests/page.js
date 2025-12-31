@@ -17,13 +17,13 @@ const requests = [
     title: "護衛 / 商隊の街道移動",
     status: "進行中",
     summary: "追加の合流地点を連絡予定",
-    next: "進捗報告の確認",
+    next: "変更依頼 / 取り消し依頼のみ可",
   },
   {
     id: "req-002",
     title: "討伐 / 湿地帯の魔蛇",
     status: "審査待ち",
-    summary: "危険度の補足を追記すると早く進みます",
+    summary: "審査前は取り下げのみ可",
     next: "受付の見積りを待機",
   },
   {
@@ -33,12 +33,33 @@ const requests = [
     summary: "納品先と品質条件を入力してください",
     next: "条件を確認して送信",
   },
+  {
+    id: "req-004",
+    title: "討伐 / 森の魔狼",
+    status: "完了",
+    summary: "記録のみ参照可能",
+    next: "完了後は取り下げ不可",
+  },
 ];
 
 const statusStyle = {
   進行中: "default",
   審査待ち: "secondary",
   下書き: "outline",
+  完了: "muted",
+};
+
+const actionsByStatus = {
+  下書き: [
+    { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
+    { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
+  ],
+  審査待ち: [{ label: "取り下げ（審査前）", href: "/requests", variant: "outline" }],
+  進行中: [
+    { label: "変更依頼を送る（ダミー）", href: "/requests", variant: "outline" },
+    { label: "取り消し依頼を送る（ダミー）", href: "/requests", variant: "ghost" },
+  ],
+  完了: [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
 };
 
 export default function RequestsPage() {
@@ -68,13 +89,15 @@ export default function RequestsPage() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">次のアクション: {req.next}</p>
               </CardContent>
-              <CardFooter className="justify-between">
+              <CardFooter className="flex flex-wrap gap-2">
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/requests/${req.id}`}>詳細を見る</Link>
                 </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/requests/${req.id}`}>進捗を更新</Link>
-                </Button>
+                {(actionsByStatus[req.status] ?? []).map((action) => (
+                  <Button key={action.label} variant={action.variant} size="sm" asChild>
+                    <Link href={action.href}>{action.label}</Link>
+                  </Button>
+                ))}
               </CardFooter>
             </Card>
           ))}
