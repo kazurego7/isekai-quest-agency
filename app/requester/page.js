@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,21 +25,21 @@ const requesterView = {
   ],
   laneTitle: "提出・進捗ボード",
   laneSubtitle: "受付に送信済みの依頼票",
-  laneItems: [
-    {
-      title: "US-01 依頼票の作成",
-      status: "受付待ち",
-      meta: "期限: 2日後 / 緊急度: 中",
-    },
-    {
-      title: "US-03 依頼内容の追記",
-      status: "下書き",
-      meta: "質問: 希望報酬の上限調整",
-    },
-    {
-      title: "US-09 納品受領確認",
-      status: "完了",
-      meta: "受付ログにサイン済み",
+    laneItems: [
+      {
+        title: "US-01 依頼票の作成",
+        status: "受付待ち",
+        meta: "期限: 2日後 / 緊急度: 中",
+      },
+      {
+        title: "US-03 依頼内容の追記",
+        status: "下書き",
+        meta: "差し戻し: 目的を具体的に記載",
+      },
+      {
+        title: "US-09 納品受領確認",
+        status: "完了",
+        meta: "受付ログにサイン済み",
     },
   ],
   panels: [
@@ -47,16 +47,16 @@ const requesterView = {
       title: "入力ガイド",
       items: [
         "目的・期限・報酬の必須チェックを表示",
-        "添付素材のアップロード枠を固定",
+        "添付素材のアップロード枠を固定（任意）",
         "提出前プレビューで漏れを警告",
       ],
     },
     {
-      title: "連絡ボックス",
+      title: "受付処理の流れ",
       items: [
-        "受付からの質問に回答して再提出",
-        "補足コメントを残して履歴化",
-        "通知とメールを同時に送信",
+        "受付が補完・修正して受領",
+        "不明点があれば差し戻しコメントを受領",
+        "受領後はクエスト票に変換され冒険者へ公開",
       ],
     },
   ],
@@ -74,9 +74,9 @@ const requesterView = {
     ],
   },
   alerts: [
-    { label: "質問", text: "報酬上限を5%引き上げますか？", note: "受付嬢 ミリア" },
-    { label: "進行中", text: "US-01 が受付ステップに進行", note: "14分前" },
-    { label: "完了", text: "納品確認済み。支払い手続きへ移行", note: "昨日" },
+    { label: "受付補完", text: "US-01 報酬と期限を調整して受付登録", note: "受付嬢 ミリア" },
+    { label: "差し戻し", text: "US-03 目的欄を具体化して再提出", note: "期限: 明日まで" },
+    { label: "受領", text: "US-09 受領済み。査定ステップへ移行", note: "完了" },
   ],
 };
 
@@ -87,15 +87,11 @@ export default function RequesterPage() {
   const secondaryAction = requesterView.actions[1];
   const supplementalActions = requesterView.actions.slice(2);
   const featuredLane = requesterView.laneItems[0];
-
-  const getAlertCtaLabel = useMemo(
-    () => ({
-      質問: "回答する",
-      進行中: "進捗を見る",
-      完了: "履歴を確認",
-    }),
-    [],
-  );
+  const alertCtaLabels = {
+    受付補完: "確認する",
+    差し戻し: "修正して再提出",
+    受領: "履歴を見る",
+  };
 
   const isNearDeadline = (meta) => meta?.includes("期限");
 
@@ -307,7 +303,7 @@ export default function RequesterPage() {
                         </div>
                       </div>
                       <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                        {getAlertCtaLabel[alert.label] ?? "確認する"}
+                        {alertCtaLabels[alert.label] ?? "確認する"}
                       </Button>
                     </div>
                   ))}
