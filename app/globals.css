@@ -51,7 +51,7 @@ body {
     color: hsl(var(--foreground));
     background-color: hsl(var(--background));
     background-image: radial-gradient(circle at top left, #fff3dd 0%, #f8edda 40%, #efe0c8 100%);
-    font-family: var(--font-gothic), "Hiragino Kaku Gothic ProN", "Yu Gothic",
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui,
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
