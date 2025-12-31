@@ -34,23 +34,7 @@ const mockRequests = {
       "報酬上限額": "90,000G",
       備考: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
     },
-    notes: "受付嬢から調整案が届いています。依頼者が合意すると受注されます。",
-    next: "依頼者が合意 or 調整を返信",
-    lastProposalBy: "受付嬢",
-    proposal: [
-      {
-        label: "場所",
-        before: "森を抜ける街道 / 合流地点あり",
-        after: "森の入口の宿場町に変更",
-        reason: "夜間の安全確保のため",
-      },
-      {
-        label: "完了期限",
-        before: "今週末までに完了",
-        after: "5日以内に変更",
-        reason: "護衛の人数調整に時間が必要",
-      },
-    ],
+    notes: "受付嬢から調整案が届いています。内容を確認してからアクションしてください。",
   },
   "req-002": {
     title: "討伐 / 湿地帯の魔蛇",
@@ -65,16 +49,6 @@ const mockRequests = {
       備考: "依頼者から調整案が届いています。受付嬢が合意すると受注されます。",
     },
     notes: "依頼者からの提案を確認してください。",
-    next: "受付嬢が合意 or 調整を返信",
-    lastProposalBy: "依頼者",
-    proposal: [
-      {
-        label: "報酬上限額",
-        before: "90,000G",
-        after: "120,000G",
-        reason: "危険度が高いエリアのため",
-      },
-    ],
   },
   "req-003": {
     title: "採取 / 氷花の採取",
@@ -89,9 +63,6 @@ const mockRequests = {
       備考: "受付への送信前です。送信すると合意ラリーが始まります。",
     },
     notes: "送信して合意ラリーを開始してください。",
-    next: "送信して合意ラリーを開始",
-    lastProposalBy: "依頼者",
-    proposal: [],
   },
   "req-004": {
     title: "討伐 / 森の魔狼",
@@ -106,9 +77,6 @@ const mockRequests = {
       備考: "両者合意済みのため受注済み。以降は進捗・納品フェーズ。",
     },
     notes: "参照のみ可能です。",
-    next: "参照のみ",
-    lastProposalBy: "受付嬢",
-    proposal: [],
   },
 };
 
@@ -172,57 +140,6 @@ export default function RequestDetail({ params }) {
                 </div>
               ))}
             </div>
-            <Card className="border-dashed border-primary/40 bg-card/80">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">次のアクション</CardTitle>
-                <CardDescription>{request.next}</CardDescription>
-              </CardHeader>
-              <CardFooter className="gap-2">
-                <Button size="sm" asChild>
-                  <Link href="/requests">一覧に戻る</Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/requests/${params.id}/adjust`}>調整を作成</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            {request.proposal.length ? (
-              <Card className="border border-primary/15 bg-white/90">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">直近の調整案（{request.lastProposalBy}から）</CardTitle>
-                  <CardDescription>調整前 / 調整後 / 調整理由を並べて表示します。</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {request.proposal.map((item) => (
-                    <div
-                      key={item.label}
-                      className="space-y-1 rounded-lg border border-border/60 bg-muted/50 p-3 text-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-ink">{item.label}</span>
-                        <Badge variant="outline" className="text-[11px]">
-                          {request.lastProposalBy}の提案
-                        </Badge>
-                      </div>
-                      <div className="space-y-2 rounded-lg bg-white/80 p-2 text-xs text-foreground">
-                        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/30 p-2">
-                          <p className="text-[11px] text-muted-foreground">調整前</p>
-                          <p className="font-medium">{item.before}</p>
-                        </div>
-                        <div className="space-y-1 rounded-lg border border-primary/30 bg-primary/5 p-2">
-                          <p className="text-[11px] text-primary">調整後</p>
-                          <p className="font-medium text-primary">{item.after}</p>
-                        </div>
-                        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/30 p-2">
-                          <p className="text-[11px] text-muted-foreground">理由</p>
-                          <p className="text-muted-foreground">{item.reason}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ) : null}
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
             {(actionsByStatus[request.status] ?? []).map((action) => (
