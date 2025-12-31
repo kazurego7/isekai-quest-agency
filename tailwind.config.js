@@ -55,8 +55,14 @@ module.exports = {
         glow: "0 20px 80px rgba(32, 27, 22, 0.18)",
       },
       fontFamily: {
-        sans: ["var(--font-gothic)", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["var(--font-mincho)", "ui-serif", "Georgia", "serif"],
+        sans: [
+          '"Hiragino Kaku Gothic ProN"',
+          '"Yu Gothic"',
+          '"Noto Sans JP"',
+          "system-ui",
+          "sans-serif",
+        ],
+        serif: ['"Yu Mincho"', '"Hiragino Mincho ProN"', "serif"],
       },
     },
   },
