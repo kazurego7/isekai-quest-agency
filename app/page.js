@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/card";
 
 const quickActions = [
-  { label: "新規依頼", note: "3分で送信", variant: "default" },
-  { label: "下書きを再開", note: "途中保存済み 2件", variant: "outline" },
-  { label: "受付に相談", note: "チャットで確認", variant: "ghost" },
+  { label: "新規依頼", note: "3分で送信", variant: "default", href: "/requests/new" },
+  { label: "依頼一覧", note: "進行・審査を確認", variant: "outline", href: "/requests" },
+  { label: "受付に相談", note: "チャットで確認", variant: "ghost", href: "/requests/new" },
 ];
 
 const checklist = [
@@ -79,9 +79,16 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {quickActions.map((action) => (
-                <Button key={action.label} variant={action.variant} className="justify-between">
-                  <span className="font-semibold">{action.label}</span>
-                  <span className="text-xs text-muted-foreground">{action.note}</span>
+                <Button
+                  key={action.label}
+                  variant={action.variant}
+                  className="justify-between"
+                  asChild
+                >
+                  <a href={action.href}>
+                    <span className="font-semibold">{action.label}</span>
+                    <span className="text-xs text-muted-foreground">{action.note}</span>
+                  </a>
                 </Button>
               ))}
             </div>
