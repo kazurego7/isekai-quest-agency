@@ -1,5 +1,6 @@
 import { Shippori_Mincho, Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
 const mincho = Shippori_Mincho({
   variable: "--font-mincho",
@@ -21,7 +22,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ja">
-      <body className={`${mincho.variable} ${gothic.variable}`}>
+      <body
+        className={cn(
+          "min-h-screen bg-background text-foreground antialiased",
+          mincho.variable,
+          gothic.variable,
+        )}
+      >
         {children}
       </body>
     </html>
