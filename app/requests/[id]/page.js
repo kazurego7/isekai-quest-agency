@@ -11,29 +11,42 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const fieldOrder = [
+  "依頼タイトル",
+  "目的・背景",
+  "場所",
+  "完了期限",
+  "危険度・同行条件",
+  "報酬上限額",
+  "備考",
+];
+
 const mockRequests = {
   "req-001": {
     title: "護衛 / 商隊の街道移動",
     status: "合意待ち（依頼者）",
-    details: [
-      { label: "目的", value: "商隊を西の街まで護衛" },
-      { label: "場所", value: "森を抜ける街道 / 合流地点あり" },
-      { label: "期限", value: "今週末までに完了" },
-      { label: "報酬上限", value: "90,000G" },
-    ],
+    fields: {
+      "依頼タイトル": "護衛 / 商隊の街道移動",
+      "目的・背景": "商隊を西の街まで護衛する",
+      "場所": "森を抜ける街道 / 合流地点あり",
+      "完了期限": "今週末までに完了",
+      "危険度・同行条件": "同行2名、夜間警戒を希望",
+      "報酬上限額": "90,000G",
+      備考: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
+    },
     notes: "受付嬢から調整案が届いています。依頼者が合意すると受注されます。",
     next: "依頼者が合意 or 調整を返信",
     lastProposalBy: "受付嬢",
     proposal: [
       {
-        label: "合流地点",
-        before: "街道の中間地点",
-        after: "森の入口の宿場町",
+        label: "場所",
+        before: "森を抜ける街道 / 合流地点あり",
+        after: "森の入口の宿場町に変更",
         reason: "夜間の安全確保のため",
       },
       {
-        label: "期限",
-        before: "今週末まで",
+        label: "完了期限",
+        before: "今週末までに完了",
         after: "5日以内に変更",
         reason: "護衛の人数調整に時間が必要",
       },
@@ -42,18 +55,21 @@ const mockRequests = {
   "req-002": {
     title: "討伐 / 湿地帯の魔蛇",
     status: "合意待ち（受付嬢）",
-    details: [
-      { label: "目的", value: "湿地帯に出現する魔蛇の討伐" },
-      { label: "場所", value: "南方の湿地帯" },
-      { label: "期限", value: "緊急 / 3日以内に対応希望" },
-      { label: "報酬上限", value: "120,000G" },
-    ],
-    notes: "依頼者から調整案が届いています。受付嬢が合意すると受注されます。",
+    fields: {
+      "依頼タイトル": "討伐 / 湿地帯の魔蛇",
+      "目的・背景": "湿地帯に出現する魔蛇の討伐",
+      "場所": "南方の湿地帯",
+      "完了期限": "緊急 / 3日以内に対応希望",
+      "危険度・同行条件": "同行3名、毒への耐性装備必須",
+      "報酬上限額": "120,000G",
+      備考: "依頼者から調整案が届いています。受付嬢が合意すると受注されます。",
+    },
+    notes: "依頼者からの提案を確認してください。",
     next: "受付嬢が合意 or 調整を返信",
     lastProposalBy: "依頼者",
     proposal: [
       {
-        label: "報酬上限",
+        label: "報酬上限額",
         before: "90,000G",
         after: "120,000G",
         reason: "危険度が高いエリアのため",
@@ -63,13 +79,16 @@ const mockRequests = {
   "req-003": {
     title: "採取 / 氷花の採取",
     status: "依頼者ドラフト",
-    details: [
-      { label: "目的", value: "魔導薬の原料となる氷花の採取" },
-      { label: "場所", value: "北方の山岳地帯 / 標高2,000m付近" },
-      { label: "期限", value: "来週末までに納品" },
-      { label: "報酬上限", value: "60,000G" },
-    ],
-    notes: "受付への送信前です。送信すると合意ラリーが始まります。",
+    fields: {
+      "依頼タイトル": "採取 / 氷花の採取",
+      "目的・背景": "魔導薬の原料となる氷花の採取",
+      "場所": "北方の山岳地帯 / 標高2,000m付近",
+      "完了期限": "来週末までに納品",
+      "危険度・同行条件": "同行1名、寒冷地装備必須",
+      "報酬上限額": "60,000G",
+      備考: "受付への送信前です。送信すると合意ラリーが始まります。",
+    },
+    notes: "送信して合意ラリーを開始してください。",
     next: "送信して合意ラリーを開始",
     lastProposalBy: "依頼者",
     proposal: [],
@@ -77,13 +96,16 @@ const mockRequests = {
   "req-004": {
     title: "討伐 / 森の魔狼",
     status: "合意済み（受注）",
-    details: [
-      { label: "目的", value: "森の魔狼の討伐" },
-      { label: "場所", value: "北の森 / 周辺の村" },
-      { label: "期限", value: "完了済み" },
-      { label: "報酬上限", value: "150,000G" },
-    ],
-    notes: "両者合意済みのため受注済み。以降は進捗・納品フェーズ。",
+    fields: {
+      "依頼タイトル": "討伐 / 森の魔狼",
+      "目的・背景": "森の魔狼の討伐",
+      "場所": "北の森 / 周辺の村",
+      "完了期限": "完了済み",
+      "危険度・同行条件": "同行2名、夜間行動あり",
+      "報酬上限額": "150,000G",
+      備考: "両者合意済みのため受注済み。以降は進捗・納品フェーズ。",
+    },
+    notes: "参照のみ可能です。",
     next: "参照のみ",
     lastProposalBy: "受付嬢",
     proposal: [],
@@ -140,13 +162,13 @@ export default function RequestDetail({ params }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3">
-              {request.details.map((item) => (
+              {fieldOrder.map((label) => (
                 <div
-                  key={item.label}
+                  key={label}
                   className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-3 text-sm"
                 >
-                  <span className="text-muted-foreground">{item.label}</span>
-                  <span className="text-ink">{item.value}</span>
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-ink">{request.fields[label]}</span>
                 </div>
               ))}
             </div>
@@ -182,18 +204,18 @@ export default function RequestDetail({ params }) {
                           {request.lastProposalBy}の提案
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 gap-1 rounded-lg bg-white/80 p-2 text-xs text-foreground">
-                        <div className="flex justify-between gap-2">
-                          <span className="text-muted-foreground">調整前</span>
-                          <span className="font-medium">{item.before}</span>
+                      <div className="space-y-2 rounded-lg bg-white/80 p-2 text-xs text-foreground">
+                        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/30 p-2">
+                          <p className="text-[11px] text-muted-foreground">調整前</p>
+                          <p className="font-medium">{item.before}</p>
                         </div>
-                        <div className="flex justify-between gap-2">
-                          <span className="text-muted-foreground">調整後</span>
-                          <span className="font-medium text-primary">{item.after}</span>
+                        <div className="space-y-1 rounded-lg border border-primary/30 bg-primary/5 p-2">
+                          <p className="text-[11px] text-primary">調整後</p>
+                          <p className="font-medium text-primary">{item.after}</p>
                         </div>
-                        <div className="flex justify-between gap-2">
-                          <span className="text-muted-foreground">理由</span>
-                          <span className="text-muted-foreground">{item.reason}</span>
+                        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/30 p-2">
+                          <p className="text-[11px] text-muted-foreground">理由</p>
+                          <p className="text-muted-foreground">{item.reason}</p>
                         </div>
                       </div>
                     </div>
