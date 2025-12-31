@@ -9,321 +9,190 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const heroStats = [
-  { label: "稼働中クエスト", value: "128", note: "3日以内の完了見込み" },
-  { label: "未処理依頼", value: "24", note: "受付嬢の確認待ち" },
-  { label: "支払い待ち", value: "9", note: "素材査定完了済み" },
+const quickActions = [
+  { label: "新規依頼", note: "3分で送信", variant: "default" },
+  { label: "下書きを再開", note: "途中保存済み 2件", variant: "outline" },
+  { label: "受付に相談", note: "チャットで確認", variant: "ghost" },
 ];
 
-const roles = [
-  { title: "依頼者", text: "依頼票の作成と進行状況の確認を一元化。" },
-  { title: "受付嬢", text: "依頼内容を精査し、クエスト票へ変換。" },
-  { title: "冒険者", text: "公開クエストの受注と進捗報告。" },
-  { title: "会計係", text: "素材評価と報酬支払いを管理。" },
+const checklist = [
+  { title: "依頼の目的", note: "どんな課題を解決したいか" },
+  { title: "完了期限", note: "急ぎの場合は理由も記載" },
+  { title: "危険度・同行条件", note: "必要な装備や人数" },
+  { title: "報酬と上限額", note: "分からなければ上限だけ" },
+  { title: "連絡方法", note: "電話か魔導通信か" },
 ];
 
-const flows = [
+const activeRequests = [
   {
-    title: "クエストフロー",
-    steps: [
-      "依頼登録 → 依頼一覧",
-      "受付確認 → クエスト票作成",
-      "冒険者受注 → 進捗更新",
-      "完了報告 → 報告記録",
-    ],
+    title: "護衛 / 商隊の街道移動",
+    status: "進行中",
+    next: "進捗報告の確認",
+    detail: "追加の合流地点を連絡予定",
   },
   {
-    title: "素材納品フロー",
-    steps: [
-      "納品申請 → 受付確認",
-      "素材評価 → 報酬設定",
-      "支払い記録 → 履歴保存",
-    ],
-  },
-  {
-    title: "通知と履歴",
-    steps: ["進捗アラート通知", "差分ログの自動保存", "ロール別の閲覧制御"],
+    title: "討伐 / 湿地帯の魔蛇",
+    status: "審査待ち",
+    next: "受付の見積りを待機",
+    detail: "危険度の補足を追記すると早く進みます",
   },
 ];
 
-const boardColumns = [
+const templates = [
   {
-    title: "受付待ち",
-    items: ["US-01 依頼票の作成", "US-02 依頼詳細の確認"],
+    title: "討伐テンプレート",
+    description: "討伐対象・場所・討伐条件を順に入力。",
+    badge: "おすすめ",
   },
   {
-    title: "進行中",
-    items: ["US-04 クエスト受注", "US-05 進捗コメント更新", "US-06 素材納品申請"],
+    title: "護衛テンプレート",
+    description: "移動経路や人数を案内どおりに記入。",
   },
-  {
-    title: "完了",
-    items: ["US-07 素材評価", "US-08 報酬支払い記録"],
-  },
-];
-
-const reports = [
-  { title: "今月の報酬支払い", value: "1,284,000G", note: "支払い済み 86%" },
-  { title: "クエスト成功率", value: "92%", note: "前月比 +4pt" },
-  { title: "受付処理時間", value: "14分", note: "平均/依頼" },
 ];
 
 export default function Home() {
   return (
-    <div className="relative isolate overflow-hidden">
-      <div className="pointer-events-none absolute right-[-18%] top-[-22%] h-[420px] w-[420px] rounded-full bg-primary/20 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-10%] left-[-12%] h-[420px] w-[420px] rounded-full bg-secondary/25 blur-3xl" />
-
-      <div className="relative z-10 px-6 pb-24 pt-10 lg:px-16">
-        <header className="mb-12 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-xl bg-ink text-lg font-serif text-white shadow-glow">
-              異
-            </span>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-                Guild Ops Platform
-              </p>
-              <h2 className="font-serif text-xl">異世界クエスト斡旋局</h2>
-            </div>
-          </div>
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-            <a className="transition hover:text-foreground" href="#features">
-              機能
-            </a>
-            <a className="transition hover:text-foreground" href="#flows">
-              フロー
-            </a>
-            <a className="transition hover:text-foreground" href="#board">
-              ボード
-            </a>
-            <a className="transition hover:text-foreground" href="#reports">
-              レポート
-            </a>
-          </nav>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="ghost" size="sm">
-              資料を見る
-            </Button>
-            <Button variant="outline" size="sm">
-              デモを予約
-            </Button>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+      <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8">
+        <header className="mb-8 flex items-center gap-3">
+          <span className="grid h-12 w-12 place-items-center rounded-xl bg-ink text-lg font-serif text-white shadow-glow">
+            異
+          </span>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
+              Requester
+            </p>
+            <h1 className="font-serif text-xl">依頼をスマホで完結</h1>
           </div>
         </header>
 
-        <main className="space-y-16">
-          <section className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr,1fr]">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-primary">
-                  Quest Operation Suite
-                </p>
-                <h1 className="font-serif text-4xl leading-tight tracking-wide text-ink md:text-5xl">
-                  依頼から報酬まで、ギルド運営を一画面で。
-                </h1>
-                <p className="max-w-2xl text-lg text-muted-foreground">
-                  依頼者・受付嬢・冒険者・会計係の動きを同期し、クエストの進行・納品・支払いを見える化します。
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button size="lg">体験フローを見る</Button>
-                  <Button variant="outline" size="lg">
-                    機能一覧
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {heroStats.map((stat) => (
-                  <Card
-                    key={stat.label}
-                    className="border-none bg-white/80 shadow-glow backdrop-blur"
-                  >
-                    <CardContent className="space-y-2 p-5">
-                      <span className="text-sm text-muted-foreground">
-                        {stat.label}
-                      </span>
-                      <p className="text-3xl font-semibold text-ink">{stat.value}</p>
-                      <p className="text-xs text-muted-foreground">{stat.note}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+        <main className="space-y-10">
+          <section className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-primary">Mobile First</p>
+              <h2 className="font-serif text-3xl leading-tight text-ink">
+                必要な入力だけ。片手で依頼を送信。
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                下書き保存と相談をワンタップで呼び出せます。必須項目を埋めれば最短3分で受付に届きます。
+              </p>
             </div>
-
-            <Card className="border-none bg-white/90 shadow-glow backdrop-blur">
-              <CardHeader className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-ink">今日のギルド状況</p>
-                  <CardDescription>第3支部 / 夜勤帯</CardDescription>
-                </div>
-                <Badge variant="secondary" className="bg-mint text-white">
-                  稼働中
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-3">
-                  {[
-                    { label: "緊急", text: "魔獣討伐の補給申請が到着" },
-                    { label: "新規", text: "依頼票 5件が受理待ち" },
-                    { label: "完了", text: "納品3件の報酬承認済み" },
-                  ].map((item) => (
-                    <li
-                      key={item.text}
-                      className="flex items-center gap-3 rounded-lg border border-border/60 bg-white/70 px-4 py-3"
-                    >
-                      <Badge variant="muted" className="bg-accent text-ink">
-                        {item.label}
-                      </Badge>
-                      <span className="text-sm text-foreground">{item.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter className="flex items-center justify-between rounded-b-xl bg-muted/60">
-                <div>
-                  <p className="text-sm text-muted-foreground">次の受付シフト</p>
-                  <p className="font-semibold text-ink">22:00 - 02:00</p>
-                </div>
-                <Button variant="ghost" size="sm">
-                  引き継ぎを書く
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {quickActions.map((action) => (
+                <Button key={action.label} variant={action.variant} className="justify-between">
+                  <span className="font-semibold">{action.label}</span>
+                  <span className="text-xs text-muted-foreground">{action.note}</span>
                 </Button>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary">Checklist</p>
+                <h3 className="font-serif text-2xl">送信前にここだけ確認</h3>
+              </div>
+              <Badge variant="secondary">目安 3分</Badge>
+            </div>
+            <Card className="border border-primary/10 bg-white/90 shadow-sm backdrop-blur">
+              <CardContent className="divide-y divide-border/80 p-0">
+                {checklist.map((item) => (
+                  <div key={item.title} className="flex items-start gap-3 px-4 py-3">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{item.note}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+              <CardFooter className="justify-end gap-2">
+                <Button variant="ghost" size="sm">
+                  よくある質問
+                </Button>
+                <Button size="sm">チェックを完了</Button>
               </CardFooter>
             </Card>
           </section>
 
-          <section id="features" className="space-y-8">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary">Roles</p>
-              <div className="space-y-2">
-                <h2 className="font-serif text-3xl">役割ごとのワークスペース</h2>
-                <p className="max-w-2xl text-muted-foreground">
-                  依頼者の入力から会計係の支払いまで、担当ごとに必要な情報だけを整理。
-                </p>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary">Status</p>
+                <h3 className="font-serif text-2xl">依頼の状況</h3>
               </div>
+              <Button variant="ghost" size="sm">
+                履歴を見る
+              </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {roles.map((role) => (
-                <Card
-                  key={role.title}
-                  className="border-none bg-white/80 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-glow"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{role.title}</CardTitle>
-                    <CardDescription>{role.text}</CardDescription>
+            <div className="space-y-3">
+              {activeRequests.map((request) => (
+                <Card key={request.title} className="border border-border/70 bg-white/90 shadow-sm">
+                  <CardHeader className="space-y-1">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg text-ink">{request.title}</CardTitle>
+                      <Badge variant="muted">{request.status}</Badge>
+                    </div>
+                    <CardDescription>{request.detail}</CardDescription>
                   </CardHeader>
-                  <CardFooter className="pt-0">
-                    <Badge variant="muted">専用ダッシュボード</Badge>
+                  <CardFooter className="justify-between">
+                    <p className="text-sm text-muted-foreground">次のアクション: {request.next}</p>
+                    <Button variant="ghost" size="sm">
+                      詳細
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
             </div>
           </section>
 
-          <section id="flows" className="space-y-8">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary">Flows</p>
-              <h2 className="font-serif text-3xl">依頼から完了までの流れを一本化</h2>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              {flows.map((flow) => (
-                <Card
-                  key={flow.title}
-                  className="border border-primary/10 bg-card/90 shadow-sm backdrop-blur"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{flow.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <ol className="space-y-2 text-sm text-muted-foreground">
-                      {flow.steps.map((step) => (
-                        <li
-                          key={step}
-                          className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2"
-                        >
-                          <span className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          <section id="board" className="space-y-8">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary">
-                Live Board
-              </p>
-              <h2 className="font-serif text-3xl">クエストボードのモック</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {boardColumns.map((column) => (
-                <Card
-                  key={column.title}
-                  className="border border-border/60 bg-white/80 shadow-sm backdrop-blur"
-                >
-                  <CardHeader className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{column.title}</CardTitle>
-                    <Badge variant="muted">{column.items.length}</Badge>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {column.items.map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-lg border border-border/70 bg-background/80 px-3 py-3 shadow-sm"
-                      >
-                        <p className="text-sm font-semibold text-ink">{item}</p>
-                        <p className="text-xs text-muted-foreground">担当: 自動割当</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          <section id="reports" className="space-y-8">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary">
-                Reports
-              </p>
-              <h2 className="font-serif text-3xl">レポートと支払い状況</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {reports.map((report) => (
-                <Card
-                  key={report.title}
-                  className="border-none bg-card/80 shadow-sm backdrop-blur"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{report.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-3xl font-semibold text-ink">{report.value}</p>
-                    <p className="text-sm text-muted-foreground">{report.note}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/80 via-primary to-mint/70 p-10 text-white shadow-glow">
-            <div className="absolute right-[-10%] top-[-20%] h-48 w-48 rounded-full bg-white/20 blur-3xl" />
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
-              <div className="space-y-3">
-                <h2 className="font-serif text-3xl">ギルド運営をすぐにデジタル化</h2>
-                <p className="max-w-2xl text-sm text-white/90">
-                  モックアップはそのまま Next.js で拡張できます。UI を使って仕様を詰めていきましょう。
-                </p>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary">Templates</p>
+                <h3 className="font-serif text-2xl">テンプレートから入力</h3>
               </div>
-              <Button
-                size="lg"
-                className="bg-white text-primary hover:bg-white/90"
-                variant="secondary"
-              >
-                モックを共有
-              </Button>
+              <Badge variant="secondary">最短</Badge>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {templates.map((template) => (
+                <Card
+                  key={template.title}
+                  className="border-none bg-card/90 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-glow"
+                >
+                  <CardHeader className="flex items-start justify-between space-y-1">
+                    <div>
+                      <CardTitle className="text-lg">{template.title}</CardTitle>
+                      <CardDescription>{template.description}</CardDescription>
+                    </div>
+                    {template.badge ? <Badge variant="secondary">{template.badge}</Badge> : null}
+                  </CardHeader>
+                  <CardFooter>
+                    <Button variant="outline" size="sm" className="w-full">
+                      このテンプレートで作成
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          <section className="relative overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-r from-primary via-primary/90 to-mint/80 p-6 text-white shadow-glow">
+            <div className="absolute right-[-10%] top-[-30%] h-32 w-32 rounded-full bg-white/15 blur-3xl" />
+            <div className="relative z-10 space-y-3">
+              <h3 className="font-serif text-2xl">困ったら受付にまかせて</h3>
+              <p className="text-sm text-white/90">
+                分からない項目は空欄でも送信できます。受付嬢がチャットでフォローし、見積りを提示します。
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button size="sm" variant="secondary" className="bg-white text-primary hover:bg-white/90">
+                  すぐ相談する
+                </Button>
+                <Button size="sm" variant="ghost" className="text-white hover:bg-white/10">
+                  フィードバックを送る
+                </Button>
+              </div>
             </div>
           </section>
         </main>
