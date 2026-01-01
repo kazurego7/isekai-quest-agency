@@ -87,10 +87,10 @@ export default function RequestsPage() {
         <Card className="border-none bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">依頼を絞り込み</CardTitle>
-            <CardDescription>合意待ち（依頼者 / 受付嬢）やドラフトで切り替えられます。（ダミー）</CardDescription>
+            <CardDescription>下書き / 合意待ち / 確認前 で切り替えられます。（ダミー）</CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-wrap gap-2">
-            {["合意待ち（依頼者）", "合意待ち（受付嬢）", "依頼者ドラフト"].map((label) => (
+            {["下書き", "合意待ち", "確認前"].map((label) => (
               <Button key={label} size="sm" variant="outline">
                 {label}
               </Button>

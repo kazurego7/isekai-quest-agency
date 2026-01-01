@@ -99,7 +99,9 @@ export default function AdjustPage({ params }) {
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
             <h1 className="font-serif text-2xl">依頼調整（ダミー）</h1>
-            <p className="text-sm text-muted-foreground">送信すると「合意待ち」側に回ります。</p>
+            <p className="text-sm text-muted-foreground">
+              送信すると受付嬢の合意待ちとなり、依頼者は合意済み扱いになります。
+            </p>
           </div>
           <Button size="sm" variant="outline" asChild>
             <Link href={`/requests/${params.id}`}>詳細へ戻る</Link>
@@ -153,7 +155,7 @@ export default function AdjustPage({ params }) {
           <CardHeader>
             <CardTitle className="text-lg">合意ルール（ダミー）</CardTitle>
             <CardDescription>
-              調整を送った側は「合意待ち」相手にボールを渡した状態となり、自分は合意済みとみなされます。
+              調整を送った側は受付嬢の合意待ちとなり、自分（依頼者）は合意済みとみなされます。
             </CardDescription>
           </CardHeader>
         </Card>
