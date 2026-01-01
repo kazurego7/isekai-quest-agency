@@ -100,8 +100,12 @@ export default function AdjustPage({ params }) {
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
             <h1 className="font-serif text-2xl">依頼調整（ダミー）</h1>
             <p className="text-sm text-muted-foreground">
-              送信すると受付嬢の合意待ちとなり、依頼者は合意済み扱いになります。
+              依頼者と受付嬢が交互に「合意」または「調整」を送ります。送信すると今回の送信者は合意済み扱いとなり、相手側が合意/調整を返せます。
             </p>
+            <div className="mt-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-ink">
+              <p className="font-semibold text-ink">合意ラリーの流れ（例）</p>
+              <p>依頼者が依頼送信 → 受付嬢が合意 or 調整 → 依頼者が合意 or 再調整 → 受付嬢が合意</p>
+            </div>
           </div>
           <Button size="sm" variant="outline" asChild>
             <Link href={`/requests/${params.id}`}>詳細へ戻る</Link>
@@ -118,7 +122,7 @@ export default function AdjustPage({ params }) {
               <div key={label} className="space-y-2 rounded-lg border border-border/50 bg-muted/40 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-ink">{label}</span>
-                  <span className="text-[11px] text-muted-foreground">調整前 / 調整後</span>
+                  <span className="text-[11px] text-muted-foreground">上: 調整前（相手案） / 下: 調整後（今回の提案）</span>
                 </div>
                 <div className="space-y-2">
                   <input
@@ -143,9 +147,12 @@ export default function AdjustPage({ params }) {
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
             <Button size="sm" asChild>
-              <Link href={`/requests/${params.id}`}>調整案を送る（ダミー）</Link>
+              <Link href={`/requests/${params.id}`}>今回の提案を送信（ダミー）</Link>
             </Button>
             <Button size="sm" variant="outline" asChild>
+              <Link href={`/requests/${params.id}`}>合意して確定（ダミー）</Link>
+            </Button>
+            <Button size="sm" variant="ghost" asChild>
               <Link href={`/requests/${params.id}`}>送らず戻る</Link>
             </Button>
           </CardFooter>
