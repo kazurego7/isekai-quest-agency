@@ -27,6 +27,8 @@
   --ink: 30 19% 11%;
   --ink-soft: 28 10% 33%;
   --mint: 145 16% 44%;
+  --font-gothic: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  --font-mincho: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
 }
 
 *,
