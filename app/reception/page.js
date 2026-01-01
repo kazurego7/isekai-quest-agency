@@ -152,24 +152,24 @@ export default function ReceptionPage() {
                   </div>
                   <p className="text-sm text-ink">報酬案: {draft.rewards}</p>
                   <p className="text-sm text-muted-foreground">リスク: {draft.risk}</p>
-                  <div className="rounded-lg border border-border/60 bg-white/70 p-3 text-xs space-y-1">
-                    <p className="font-semibold text-ink">公開前チェック（必須情報）</p>
-                    <p className="text-ink">ランク下限: {draft.rank}</p>
-                    <p className="text-ink">成果物 / 評価基準: {draft.deliverables}</p>
-                    <p className="text-ink">ギルド支給物: {draft.supplies}</p>
-                    <p className="text-ink">地図 / 注意事項: {draft.mapNotes}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    公開時: ランク/成果物/支給物/注意事項が公開文面に含まれているか最終確認（ダミー）
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
-                      <Link href="/requests/req-002/adjust">文言を編集（ダミー）</Link>
-                    </Button>
-                    <Button size="sm" className="text-xs" variant="secondary">
-                      公開申請（ダミー）
-                    </Button>
-                  </div>
+              <div className="rounded-lg border border-border/60 bg-white/70 p-3 text-xs space-y-1">
+                <p className="font-semibold text-ink">公開前チェック（必須情報）</p>
+                <p className="text-ink">ランク下限: {draft.rank}</p>
+                <p className="text-ink">成果物 / 評価基準: {draft.deliverables}</p>
+                <p className="text-ink">ギルド支給物: {draft.supplies}</p>
+                <p className="text-ink">地図 / 注意事項: {draft.mapNotes}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                公開時: ランク/成果物/支給物/注意事項が公開文面に含まれているか最終確認（ダミー）
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
+                  <Link href="/reception/questify">文言を編集（クエスト化画面）</Link>
+                </Button>
+                <Button size="sm" className="text-xs" variant="secondary">
+                  公開申請（ダミー）
+                </Button>
+              </div>
                 </div>
               ))}
             </CardContent>
