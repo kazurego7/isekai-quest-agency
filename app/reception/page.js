@@ -11,11 +11,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const inAgreement = [
+  {
+    id: "req-002",
+    title: "討伐 / 湿地帯の魔蛇",
+    status: "確認前",
+    note: "依頼者が調整案を確認中。返信待ち（受付視点）。",
+    next: "依頼詳細を見て、返信を待つ",
+    href: "/requests/req-002",
+  },
+  {
+    id: "req-001",
+    title: "護衛 / 商隊の街道移動",
+    status: "合意待ち",
+    note: "依頼者の再調整案を確認し、合意する状態。",
+    next: "依頼詳細を開いて合意判断（ダミー）",
+    href: "/requests/req-001",
+  },
+];
+
 const questDrafts = [
   {
     questId: "QST-019",
     title: "討伐 / 湿地帯の魔蛇",
-    stage: "公開準備",
+    stage: "合意済み",
     rewards: "120,000G（案）",
     risk: "毒・沼地 / 同行3名",
     rank: "Bランク以上",
@@ -26,7 +45,7 @@ const questDrafts = [
   {
     questId: "QST-020",
     title: "護衛 / 商隊の街道移動",
-    stage: "公開待ち",
+    stage: "公開済み",
     rewards: "90,000G",
     risk: "夜間警戒 / 同行2名",
     rank: "Cランク以上（盾役1名必須）",
@@ -65,6 +84,36 @@ export default function ReceptionPage() {
         </header>
 
         <section className="grid grid-cols-1 gap-4">
+          <Card className="border border-border/70 bg-white/90 shadow-sm">
+            <CardHeader className="space-y-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-ink">合意中（受付視点）</CardTitle>
+                <Badge variant="secondary">確認前 / 合意待ち</Badge>
+              </div>
+              <CardDescription>依頼者との合意が終わっていない案件。依頼詳細を開いて対応します。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+              {inAgreement.map((item) => (
+                <div key={item.id} className="space-y-1 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-ink">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">ID: {item.id}</p>
+                    </div>
+                    <Badge variant="muted">{item.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.note}</p>
+                  <p className="text-xs text-ink">次のアクション: {item.next}</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="text-xs" asChild>
+                      <Link href={item.href}>依頼詳細を開く</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
@@ -100,14 +149,20 @@ export default function ReceptionPage() {
               <p className="text-xs text-muted-foreground">
                 公開時: ランク/成果物/支給物/注意事項が公開文面に含まれているか最終確認（ダミー）
               </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
-                  <Link href="/reception/questify">文言を編集（クエスト化画面）</Link>
-                </Button>
-                <Button size="sm" className="text-xs" variant="secondary">
-                  公開申請（ダミー）
-                </Button>
-              </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {draft.stage === "合意済み" ? (
+                      <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
+                        <Link href="/reception/questify">クエスト化へ（ダミー）</Link>
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
+                        <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>クエスト詳細（PC版）</Link>
+                      </Button>
+                    )}
+                    <Button size="sm" className="text-xs" variant="secondary">
+                      公開申請（ダミー）
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
