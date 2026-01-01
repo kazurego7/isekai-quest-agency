@@ -14,34 +14,41 @@ const requests = [
   {
     id: "req-001",
     title: "護衛 / 商隊の街道移動",
-    status: "合意待ち（依頼者）",
-    summary: "受付嬢から調整案が届いています。詳細を確認してください。",
+    status: "合意待ち",
+    summary: "受付嬢から調整案が届いています。依頼者が内容を確認して合意へ。",
   },
   {
     id: "req-002",
     title: "討伐 / 湿地帯の魔蛇",
-    status: "合意待ち（受付嬢）",
-    summary: "依頼者が調整案を送信済み。内容を精査してください。",
+    status: "確認前",
+    summary: "依頼者が調整案を送信済み。受付嬢の確認を待っています。",
   },
   {
     id: "req-003",
     title: "採取 / 氷花の採取",
-    status: "依頼者ドラフト",
+    status: "下書き",
     summary: "依頼者の下書き。送信前に内容を見直せます。",
   },
   {
     id: "req-004",
     title: "討伐 / 森の魔狼",
-    status: "合意済み（受注）",
+    status: "受注済み",
     summary: "両者合意済み。以降は進行フェーズです。",
+  },
+  {
+    id: "req-005",
+    title: "護衛 / 貴族の街道行軍",
+    status: "完了",
+    summary: "完了済みの依頼です。履歴として参照できます。",
   },
 ];
 
 const statusStyle = {
-  "合意待ち（依頼者）": "default",
-  "合意待ち（受付嬢）": "secondary",
-  "依頼者ドラフト": "outline",
-  "合意済み（受注）": "muted",
+  合意待ち: "default",
+  確認前: "secondary",
+  下書き: "outline",
+  受注済み: "muted",
+  完了: "muted",
 };
 
 export default function RequestsPage() {

@@ -24,7 +24,7 @@ const fieldOrder = [
 const mockRequests = {
   "req-001": {
     title: "護衛 / 商隊の街道移動",
-    status: "合意待ち（依頼者）",
+    status: "合意待ち",
     fields: {
       "依頼タイトル": "護衛 / 商隊の街道移動",
       "目的・背景": "商隊を西の街まで護衛する",
@@ -38,7 +38,7 @@ const mockRequests = {
   },
   "req-002": {
     title: "討伐 / 湿地帯の魔蛇",
-    status: "合意待ち（受付嬢）",
+    status: "確認前",
     fields: {
       "依頼タイトル": "討伐 / 湿地帯の魔蛇",
       "目的・背景": "湿地帯に出現する魔蛇の討伐",
@@ -52,7 +52,7 @@ const mockRequests = {
   },
   "req-003": {
     title: "採取 / 氷花の採取",
-    status: "依頼者ドラフト",
+    status: "下書き",
     fields: {
       "依頼タイトル": "採取 / 氷花の採取",
       "目的・背景": "魔導薬の原料となる氷花の採取",
@@ -66,7 +66,7 @@ const mockRequests = {
   },
   "req-004": {
     title: "討伐 / 森の魔狼",
-    status: "合意済み（受注）",
+    status: "受注済み",
     fields: {
       "依頼タイトル": "討伐 / 森の魔狼",
       "目的・背景": "森の魔狼の討伐",
@@ -78,30 +78,46 @@ const mockRequests = {
     },
     notes: "参照のみ可能です。",
   },
+  "req-005": {
+    title: "護衛 / 貴族の街道行軍",
+    status: "完了",
+    fields: {
+      "依頼タイトル": "護衛 / 貴族の街道行軍",
+      "目的・背景": "貴族一行の安全な移動と警護",
+      "場所": "王都から東の街道沿い",
+      "完了期限": "完了済み",
+      "危険度・同行条件": "同行3名、夜間行軍あり",
+      "報酬上限額": "200,000G",
+      備考: "完了した依頼の履歴です。",
+    },
+    notes: "完了済みのため参照のみです。",
+  },
 };
 
 const statusStyle = {
-  "合意待ち（依頼者）": "default",
-  "合意待ち（受付嬢）": "secondary",
-  "依頼者ドラフト": "outline",
-  "合意済み（受注）": "muted",
+  合意待ち: "default",
+  確認前: "secondary",
+  下書き: "outline",
+  受注済み: "muted",
+  完了: "muted",
 };
 
 const actionsByStatus = {
-  "依頼者ドラフト": [
+  下書き: [
     { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
     { label: "送信（ダミー）", href: "/requests", variant: "default" },
     { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
   ],
-  "合意待ち（依頼者）": [
+  合意待ち: [
     { label: "合意する（ダミー）", href: "/requests", variant: "default" },
     { label: "調整を送る（ダミー）", href: "/requests/req-001/adjust", variant: "outline" },
   ],
-  "合意待ち（受付嬢）": [
-    { label: "合意する（ダミー）", href: "/requests", variant: "default" },
+  確認前: [
+    { label: "受付の確認待ち", href: "/requests", variant: "secondary" },
     { label: "再調整を送る（ダミー）", href: "/requests/req-002/adjust", variant: "outline" },
   ],
-  "合意済み（受注）": [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
+  受注済み: [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
+  完了: [{ label: "完了済みの履歴", href: "/requests", variant: "ghost" }],
 };
 
 export default function RequestDetail({ params }) {
