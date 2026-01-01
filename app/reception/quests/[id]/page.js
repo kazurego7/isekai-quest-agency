@@ -16,6 +16,14 @@ const published = {
     mapNotes: "宿場町で合流。森の迂回路を利用し、夜間は停止。",
     risk: "夜間警戒 / 同行2名",
     channel: "ギルドチャット / 緊急時は鐘楼",
+    agreed: {
+      purpose: "商隊を宿場町から目的地まで安全に護衛する",
+      place: "宿場町で合流し、森の迂回路を利用して移動",
+      deadline: "今週末までに完了",
+      conditions: "夜間行軍を避ける。同行2名でシフト警戒。",
+      rewardCap: "報酬上限 90,000G（依頼者合意済み）",
+      note: "合意済み依頼。クエスト化で公開情報に整形済み。",
+    },
   },
 };
 
@@ -41,20 +49,42 @@ export default function PublishedQuestDetail({ params }) {
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
               <CardTitle className="text-lg text-ink">{quest.title}</CardTitle>
-              <CardDescription>公開済み。冒険者側ダッシュボードに表示される想定（ダミー）。</CardDescription>
+              <CardDescription>
+                公開済み。合意済みの依頼内容を基に、冒険者向け文面を整形したものです（ダミー）。
+              </CardDescription>
             </div>
             <Badge variant="secondary">{quest.status}</Badge>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="grid grid-cols-1 gap-2">
-              <InfoRow label="報酬" value={quest.reward} />
-              <InfoRow label="ランク下限" value={quest.rank} />
-              <InfoRow label="リスク" value={quest.risk} />
-              <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
-              <InfoRow label="ギルド支給物" value={quest.supplies} />
-              <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
-              <InfoRow label="連絡方法" value={quest.channel} />
-            </div>
+        </Card>
+
+        <Card className="border border-border/70 bg-white/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg text-ink">合意済み依頼内容</CardTitle>
+            <CardDescription>依頼者と合意した内容そのまま。クエスト化のベースになります。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <InfoRow label="目的・背景" value={quest.agreed?.purpose} />
+            <InfoRow label="場所" value={quest.agreed?.place} />
+            <InfoRow label="完了期限" value={quest.agreed?.deadline} />
+            <InfoRow label="危険度・同行条件" value={quest.agreed?.conditions} />
+            <InfoRow label="報酬上限額" value={quest.agreed?.rewardCap} />
+            <InfoRow label="備考" value={quest.agreed?.note} />
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/15 bg-white/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg text-ink">冒険者向け公開情報</CardTitle>
+            <CardDescription>合意済みの内容を基に、冒険者に見える形に整形した項目です。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <InfoRow label="報酬" value={quest.reward} />
+            <InfoRow label="ランク下限" value={quest.rank} />
+            <InfoRow label="リスク" value={quest.risk} />
+            <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
+            <InfoRow label="ギルド支給物" value={quest.supplies} />
+            <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
+            <InfoRow label="連絡方法" value={quest.channel} />
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" asChild>
