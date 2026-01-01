@@ -11,36 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const queue = [
-  {
-    id: "REQ-002",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "調整案レビュー",
-    requester: "依頼者: req-002",
-    priority: "緊急 / 3日以内",
-    next: "依頼者の再調整案を承認",
-    tags: ["討伐", "毒耐性"],
-  },
-  {
-    id: "REQ-001",
-    title: "護衛 / 商隊の街道移動",
-    status: "合意待ち",
-    requester: "依頼者: req-001",
-    priority: "通常 / 5日以内",
-    next: "調整案を確認して合意",
-    tags: ["護衛", "夜間あり"],
-  },
-  {
-    id: "REQ-003",
-    title: "採取 / 氷花の採取",
-    status: "下書き確認",
-    requester: "依頼者: req-003",
-    priority: "通常 / 来週末",
-    next: "依頼票をレビューして送信",
-    tags: ["採取", "寒冷地"],
-  },
-];
-
 const questDrafts = [
   {
     questId: "QST-019",
@@ -94,40 +64,8 @@ export default function ReceptionPage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
-            <CardHeader className="space-y-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-ink">今日のキュー</CardTitle>
-                <Badge variant="secondary">3件</Badge>
-              </div>
-              <CardDescription>未確認・調整中の依頼を優先順で表示します。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
-              {queue.map((item) => (
-                <div key={item.id} className="space-y-1 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-ink">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.requester}</p>
-                    </div>
-                    <Badge variant="muted">{item.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">優先度: {item.priority}</p>
-                  <p className="text-xs text-ink">次のアクション: {item.next}</p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {item.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="border-dashed text-[11px]">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/15 bg-white/90 shadow-sm md:col-span-2">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">公開準備（依頼者と合意済みの内容）</CardTitle>
