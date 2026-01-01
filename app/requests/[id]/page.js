@@ -34,7 +34,7 @@ const mockRequests = {
       "報酬上限額": "90,000G",
       備考: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
     },
-    notes: "受付嬢から調整案が届いています。内容を確認してからアクションしてください。",
+    notes: "受付へ送信済み。受付嬢の合意を待っています。相談・再調整が必要なら連絡してください。",
   },
   "req-002": {
     title: "討伐 / 湿地帯の魔蛇",
@@ -48,7 +48,7 @@ const mockRequests = {
       "報酬上限額": "120,000G",
       備考: "依頼者から調整案が届いています。受付嬢が合意すると受注されます。",
     },
-    notes: "依頼者からの提案を確認してください。",
+    notes: "受付嬢から調整案が届きました。内容を確認し、合意または再調整を返信してください。",
   },
   "req-003": {
     title: "採取 / 氷花の採取",
@@ -109,11 +109,11 @@ const actionsByStatus = {
     { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
   ],
   合意待ち: [
-    { label: "合意する（ダミー）", href: "/requests", variant: "default" },
-    { label: "調整を送る（ダミー）", href: "/requests/req-001/adjust", variant: "outline" },
+    { label: "受付嬢の合意待ち", href: "/requests", variant: "secondary" },
+    { label: "相談する（ダミー）", href: "/requests", variant: "outline" },
   ],
   確認前: [
-    { label: "受付の確認待ち", href: "/requests", variant: "secondary" },
+    { label: "合意する（ダミー）", href: "/requests", variant: "default" },
     { label: "再調整を送る（ダミー）", href: "/requests/req-002/adjust", variant: "outline" },
   ],
   受注済み: [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
