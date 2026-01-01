@@ -102,23 +102,32 @@ const statusStyle = {
   完了: "muted",
 };
 
-const actionsByStatus = {
-  下書き: [
-    { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
-    { label: "送信（ダミー）", href: "/requests", variant: "default" },
-    { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
-  ],
-  合意待ち: [
-    { label: "受付嬢の合意待ち", href: "/requests", variant: "secondary" },
-    { label: "相談する（ダミー）", href: "/requests", variant: "outline" },
-  ],
-  確認前: [
-    { label: "合意する（ダミー）", href: "/requests", variant: "default" },
-    { label: "再調整を送る（ダミー）", href: "/requests/req-002/adjust", variant: "outline" },
-  ],
-  受注済み: [{ label: "参照のみ", href: "/requests", variant: "ghost" }],
-  完了: [{ label: "完了済みの履歴", href: "/requests", variant: "ghost" }],
-};
+function actionsByStatus(status, id) {
+  switch (status) {
+    case "下書き":
+      return [
+        { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
+        { label: "送信（ダミー）", href: "/requests", variant: "default" },
+        { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
+      ];
+    case "確認前":
+      return [
+        { label: "合意する（ダミー）", href: "/requests", variant: "default" },
+        { label: "調整を送る（ダミー）", href: `/requests/${id}/adjust`, variant: "outline" },
+      ];
+    case "合意待ち":
+      return [
+        { label: "合意する（ダミー）", href: "/requests", variant: "default" },
+        { label: "調整を送る（ダミー）", href: `/requests/${id}/adjust`, variant: "outline" },
+      ];
+    case "受注済み":
+      return [{ label: "参照のみ", href: "/requests", variant: "ghost" }];
+    case "完了":
+      return [{ label: "完了済みの履歴", href: "/requests", variant: "ghost" }];
+    default:
+      return [];
+  }
+}
 
 export default function RequestDetail({ params }) {
   const request = mockRequests[params.id] ?? mockRequests["req-001"];
@@ -158,7 +167,7 @@ export default function RequestDetail({ params }) {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            {(actionsByStatus[request.status] ?? []).map((action) => (
+            {actionsByStatus(request.status, params.id).map((action) => (
               <Button key={action.label} size="sm" variant={action.variant} asChild>
                 <Link href={action.href}>{action.label}</Link>
               </Button>
