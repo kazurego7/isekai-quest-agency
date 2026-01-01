@@ -159,7 +159,7 @@ export default function ReceptionPage() {
                         <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>クエスト詳細（PC版）</Link>
                       </Button>
                     )}
-                    <Badge variant="secondary">クエスト化=即公開</Badge>
+                    <span className="text-[11px] text-muted-foreground">クエスト化完了で即公開（ダミー）</span>
                   </div>
                 </div>
               ))}
