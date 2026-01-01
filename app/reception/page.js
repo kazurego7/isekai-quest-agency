@@ -121,7 +121,7 @@ export default function ReceptionPage() {
                 <Badge variant="secondary">公開前</Badge>
               </div>
               <CardDescription>
-                冒険者に公開する前に、ランク下限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。
+                冒険者に公開する前に、ランク下限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -159,9 +159,7 @@ export default function ReceptionPage() {
                         <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>クエスト詳細（PC版）</Link>
                       </Button>
                     )}
-                    <Button size="sm" className="text-xs" variant="secondary">
-                      公開申請（ダミー）
-                    </Button>
+                    <Badge variant="secondary">クエスト化=即公開</Badge>
                   </div>
                 </div>
               ))}

@@ -100,7 +100,7 @@ export default function AdjustPage({ params }) {
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
             <h1 className="font-serif text-2xl">依頼調整（ダミー）</h1>
             <p className="text-sm text-muted-foreground">
-              依頼者と受付嬢が交互に「合意」または「調整」を送ります。送信すると今回の送信者は合意済み扱いとなり、相手側が合意/調整を返せます。
+              依頼者と受付嬢が交互に「合意」または「調整」を送ります。この画面では調整案のみ送信し、合意は詳細画面で行う想定です（誤合意防止のため）。
             </p>
             <div className="mt-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-ink">
               <p className="font-semibold text-ink">合意ラリーの流れ（例）</p>
@@ -148,9 +148,6 @@ export default function AdjustPage({ params }) {
           <CardFooter className="flex flex-wrap gap-2">
             <Button size="sm" asChild>
               <Link href={`/requests/${params.id}`}>今回の提案を送信（ダミー）</Link>
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link href={`/requests/${params.id}`}>合意して確定（ダミー）</Link>
             </Button>
             <Button size="sm" variant="ghost" asChild>
               <Link href={`/requests/${params.id}`}>送らず戻る</Link>
