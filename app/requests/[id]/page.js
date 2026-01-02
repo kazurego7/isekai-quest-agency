@@ -129,8 +129,9 @@ function actionsByStatus(status, id) {
   }
 }
 
-export default function RequestDetail({ params }) {
-  const request = mockRequests[params.id] ?? mockRequests["req-001"];
+export default async function RequestDetail({ params }) {
+  const { id } = await params;
+  const request = mockRequests[id] ?? mockRequests["req-001"];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -167,7 +168,7 @@ export default function RequestDetail({ params }) {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            {actionsByStatus(request.status, params.id).map((action) => (
+            {actionsByStatus(request.status, id).map((action) => (
               <Button key={action.label} size="sm" variant={action.variant} asChild>
                 <Link href={action.href}>{action.label}</Link>
               </Button>

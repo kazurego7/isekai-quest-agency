@@ -30,7 +30,7 @@ const publishFields = [
 export default function QuestifyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
-      <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
+      <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10 space-y-8">
         <header className="flex items-center justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Questify</p>
@@ -44,74 +44,76 @@ export default function QuestifyPage() {
           </Button>
         </header>
 
-        <Card className="border-primary/15 bg-white/90 shadow-sm">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-primary">{agreedRequest.id}</p>
-                <CardTitle className="text-lg text-ink">{agreedRequest.title}</CardTitle>
-                <CardDescription>依頼者と合意済みの情報を表示しています。</CardDescription>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="border-primary/15 bg-white/90 shadow-sm">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.28em] text-primary">{agreedRequest.id}</p>
+                  <CardTitle className="text-lg text-ink">{agreedRequest.title}</CardTitle>
+                  <CardDescription>依頼者と合意済みの情報を表示しています。</CardDescription>
+                </div>
+                <Badge variant="secondary">合意済み</Badge>
               </div>
-              <Badge variant="secondary">合意済み</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 text-sm">
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">目的・背景</span>
-              <span className="text-ink text-right">{agreedRequest.fields.purpose}</span>
-            </div>
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">場所</span>
-              <span className="text-ink text-right">{agreedRequest.fields.place}</span>
-            </div>
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">完了期限</span>
-              <span className="text-ink text-right">{agreedRequest.fields.deadline}</span>
-            </div>
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">危険度・同行条件</span>
-              <span className="text-ink text-right">{agreedRequest.fields.risk}</span>
-            </div>
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">報酬上限額</span>
-              <span className="text-ink text-right">{agreedRequest.fields.reward}</span>
-            </div>
-            <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-              <span className="text-muted-foreground">備考</span>
-              <span className="text-ink text-right">{agreedRequest.fields.note}</span>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-2 text-sm">
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">目的・背景</span>
+                <span className="text-ink text-right">{agreedRequest.fields.purpose}</span>
+              </div>
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">場所</span>
+                <span className="text-ink text-right">{agreedRequest.fields.place}</span>
+              </div>
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">完了期限</span>
+                <span className="text-ink text-right">{agreedRequest.fields.deadline}</span>
+              </div>
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">危険度・同行条件</span>
+                <span className="text-ink text-right">{agreedRequest.fields.risk}</span>
+              </div>
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">報酬上限額</span>
+                <span className="text-ink text-right">{agreedRequest.fields.reward}</span>
+              </div>
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">備考</span>
+                <span className="text-ink text-right">{agreedRequest.fields.note}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="border-primary/15 bg-white/90 shadow-sm">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-ink">冒険者向け公開項目</CardTitle>
-              <Badge variant="secondary">公開前に必須</Badge>
-            </div>
-            <CardDescription>ランク下限や成果物など、公開文面に載せる追加項目（ダミー入力）</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {publishFields.map((field) => (
-              <label key={field.label} className="space-y-1 block">
-                <span className="text-sm font-semibold text-ink">{field.label}</span>
-                <input
-                  className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                  placeholder={field.placeholder}
-                  readOnly
-                />
-              </label>
-            ))}
-          </CardContent>
-          <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" asChild>
-              <Link href="/adventurer">クエストとして公開（ダミー）</Link>
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/reception">公開せず戻る</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+          <Card className="border-primary/15 bg-white/90 shadow-sm">
+            <CardHeader className="space-y-1">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-ink">冒険者向け公開項目</CardTitle>
+                <Badge variant="secondary">公開前に必須</Badge>
+              </div>
+              <CardDescription>ランク下限や成果物など、公開文面に載せる追加項目（ダミー入力）</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {publishFields.map((field) => (
+                <label key={field.label} className="space-y-1 block">
+                  <span className="text-sm font-semibold text-ink">{field.label}</span>
+                  <input
+                    className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                    placeholder={field.placeholder}
+                    readOnly
+                  />
+                </label>
+              ))}
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
+              <Button size="sm" asChild>
+                <Link href="/adventurer">クエストとして公開（ダミー）</Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/reception">公開せず戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
 
         <Card className="border-none bg-card/90 shadow-sm">
           <CardHeader>
