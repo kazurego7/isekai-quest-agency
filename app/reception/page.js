@@ -65,14 +65,14 @@ const recruitingQuests = [
   },
 ];
 
-const progressQuests = [
+const completionReviews = [
   {
-    questId: "QST-020",
-    title: "護衛 / 商隊の街道移動",
-    status: "進行中",
-    party: "2名編成 / 受付で選定済み",
-    note: "報告期限: 3日後",
-    href: "/adventurer/quests/qst-020",
+    questId: "QST-007",
+    title: "討伐 / 森の魔狼",
+    status: "評価待ち",
+    party: "冒険者2名 / 報告済み",
+    note: "冒険者の完了報告を確認し、達成確認を記録。",
+    href: "/reception/reviews/qst-007",
   },
 ];
 
@@ -224,13 +224,13 @@ export default function ReceptionPage() {
           <Card className="border border-border/70 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-ink">クエスト進行</CardTitle>
-                <Badge variant="secondary">進行中</Badge>
+                <CardTitle className="text-lg text-ink">クエスト完了確認</CardTitle>
+                <Badge variant="secondary">評価待ち</Badge>
               </div>
-              <CardDescription>選定完了でここに移動。進行中クエストのフォローを行います。</CardDescription>
+              <CardDescription>冒険者の完了報告を確認し、達成確認を行うキューです。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 divide-y divide-border/80 p-0">
-              {progressQuests.map((quest) => (
+              {completionReviews.map((quest) => (
                 <div key={quest.questId} className="space-y-1 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -243,7 +243,7 @@ export default function ReceptionPage() {
                   <p className="text-xs text-muted-foreground">{quest.note}</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button size="sm" variant="outline" className="text-xs" asChild>
-                      <Link href={quest.href}>進捗を見る（ダミー）</Link>
+                      <Link href={quest.href}>完了報告を確認（ダミー）</Link>
                     </Button>
                   </div>
                 </div>

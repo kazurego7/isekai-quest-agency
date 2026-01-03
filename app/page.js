@@ -28,12 +28,6 @@ const roles = [
     href: "/adventurer",
     badge: "Adventurer",
   },
-  {
-    title: "会計係ビュー（モック）",
-    description: "報酬支払い待ちリストのダミー画面。",
-    href: "/treasurer",
-    badge: "Treasurer",
-  },
 ];
 
 export default function Home() {
