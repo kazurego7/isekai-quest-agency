@@ -11,6 +11,7 @@ const published = {
     status: "公開済み",
     reward: "90,000G",
     rank: "Cランク以上（盾役1名必須）",
+    detail: "護衛ルートは宿場町経由。夜間は野営し、日中に移動する。",
     deliverables: "護衛完了報告と商隊代表の署名",
     supplies: "松明 / 予備馬1頭 / 連絡用笛",
     mapNotes: "宿場町で合流。森の迂回路を利用し、夜間は停止。",
@@ -79,7 +80,8 @@ export default function PublishedQuestDetail({ params }) {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <InfoRow label="報酬" value={quest.reward} />
-            <InfoRow label="ランク下限" value={quest.rank} />
+            <InfoRow label="ランク制限" value={quest.rank} />
+            <InfoRow label="クエスト詳細" value={quest.detail} />
             <InfoRow label="リスク" value={quest.risk} />
             <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
             <InfoRow label="ギルド支給物" value={quest.supplies} />

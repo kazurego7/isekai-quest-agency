@@ -121,7 +121,7 @@ export default function ReceptionPage() {
                 <Badge variant="secondary">公開前</Badge>
               </div>
               <CardDescription>
-                冒険者に公開する前に、ランク下限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
+                冒険者に公開する前に、ランク制限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -141,7 +141,7 @@ export default function ReceptionPage() {
                   <p className="text-sm text-muted-foreground">リスク: {draft.risk}</p>
               <div className="rounded-lg border border-border/60 bg-white/70 p-3 text-xs space-y-1">
                 <p className="font-semibold text-ink">公開前チェック（必須情報）</p>
-                <p className="text-ink">ランク下限: {draft.rank}</p>
+                <p className="text-ink">ランク制限: {draft.rank}</p>
                 <p className="text-ink">成果物 / 評価基準: {draft.deliverables}</p>
                 <p className="text-ink">ギルド支給物: {draft.supplies}</p>
                 <p className="text-ink">地図 / 注意事項: {draft.mapNotes}</p>

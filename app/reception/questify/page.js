@@ -19,8 +19,9 @@ const agreedRequest = {
 };
 
 const publishFields = [
-  { label: "冒険者ランク下限", placeholder: "Bランク以上" },
+  { label: "冒険者ランク制限", placeholder: "Bランク以上" },
   { label: "募集人数・役割", placeholder: "3名（前衛1 / 後衛1 / 支援1）" },
+  { label: "クエスト詳細", placeholder: "討伐地点の状況や注意点を記載" },
   { label: "成果物・評価基準", placeholder: "討伐証明部位 + 現地写真。傷/欠損がないこと" },
   { label: "ギルド支給物", placeholder: "解毒薬2本 / 地図 / 簡易テント / 松明" },
   { label: "地図・注意事項", placeholder: "沼地東側の浅瀬を推奨。夜間は迂回。毒沼に立入禁止" },
@@ -90,7 +91,7 @@ export default function QuestifyPage() {
                 <CardTitle className="text-lg text-ink">冒険者向け公開項目</CardTitle>
                 <Badge variant="secondary">公開前に必須</Badge>
               </div>
-              <CardDescription>ランク下限や成果物など、公開文面に載せる追加項目（ダミー入力）</CardDescription>
+              <CardDescription>ランク制限や成果物など、公開文面に載せる追加項目（ダミー入力）</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {publishFields.map((field) => (
