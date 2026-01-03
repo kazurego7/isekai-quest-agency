@@ -42,16 +42,37 @@ const questDrafts = [
     supplies: "解毒薬2本 / 地図支給 / 簡易テント",
     mapNotes: "沼地東側の浅瀬を通行。夜間は迂回指示。",
   },
+];
+
+const recruitingQuests = [
   {
     questId: "QST-020",
     title: "護衛 / 商隊の街道移動",
-    stage: "公開済み",
-    rewards: "90,000G",
-    risk: "夜間警戒 / 同行2名",
-    rank: "Cランク以上（盾役1名必須）",
-    deliverables: "護衛完了報告と商隊代表の署名",
-    supplies: "松明 / 予備馬1頭 / 連絡用笛",
-    mapNotes: "宿場町で合流。森の迂回路を利用し、夜間は停止。",
+    status: "募集中",
+    applicants: 4,
+    needed: "2名（盾役1名必須）",
+    note: "申請は先着順でレビュー。急ぎのため受付対応優先。",
+    href: "/reception/quests/qst-020",
+  },
+  {
+    questId: "QST-019",
+    title: "討伐 / 湿地帯の魔蛇",
+    status: "募集中",
+    applicants: 2,
+    needed: "3名（前衛1 / 後衛1 / 支援1）",
+    note: "申請数不足。推薦枠から追加選定可能。",
+    href: "/reception/quests/qst-019",
+  },
+];
+
+const progressQuests = [
+  {
+    questId: "QST-020",
+    title: "護衛 / 商隊の街道移動",
+    status: "進行中",
+    party: "2名編成 / 受付で選定済み",
+    note: "報告期限: 3日後",
+    href: "/adventurer/quests/qst-020",
   },
 ];
 
@@ -156,7 +177,7 @@ export default function ReceptionPage() {
                       </Button>
                     ) : (
                       <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
-                        <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>クエスト詳細（PC版）</Link>
+                        <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>冒険者選定へ（ダミー）</Link>
                       </Button>
                     )}
                     <span className="text-[11px] text-muted-foreground">クエスト化完了で即公開（ダミー）</span>
@@ -167,21 +188,69 @@ export default function ReceptionPage() {
           </Card>
         </section>
 
-        <Card className="border border-border/70 bg-white/90 shadow-sm">
-          <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-primary">Future</p>
-              <CardTitle className="text-xl text-ink">公募してきた冒険者の選定（プレースホルダー）</CardTitle>
-              <CardDescription>今回は非対応。選定ロジックは後で追加予定。</CardDescription>
-            </div>
-            <Badge variant="muted">後で検討</Badge>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              依頼合意→公開までを優先して実装しています。応募者リストや選定基準は別途追加予定です（ダミー）。
-            </p>
-          </CardContent>
-        </Card>
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="border border-border/70 bg-white/90 shadow-sm">
+            <CardHeader className="space-y-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-ink">募集中クエスト（冒険者選定）</CardTitle>
+                <Badge variant="secondary">募集中</Badge>
+              </div>
+              <CardDescription>募集をかけているクエスト。申請順にレビューし、選定へ進みます。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+              {recruitingQuests.map((quest) => (
+                <div key={quest.questId} className="space-y-1 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.questId}</p>
+                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        申請: {quest.applicants}名 / 必要枠: {quest.needed}
+                      </p>
+                    </div>
+                    <Badge variant="muted">{quest.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{quest.note}</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="text-xs" asChild>
+                      <Link href={quest.href}>選定へ</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/70 bg-white/90 shadow-sm">
+            <CardHeader className="space-y-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg text-ink">クエスト進行</CardTitle>
+                <Badge variant="secondary">進行中</Badge>
+              </div>
+              <CardDescription>選定完了でここに移動。進行中クエストのフォローを行います。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+              {progressQuests.map((quest) => (
+                <div key={quest.questId} className="space-y-1 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.questId}</p>
+                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
+                      <p className="text-xs text-muted-foreground">{quest.party}</p>
+                    </div>
+                    <Badge variant="muted">{quest.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{quest.note}</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="text-xs" asChild>
+                      <Link href={quest.href}>進捗を見る（ダミー）</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
       </div>
     </div>
   );
