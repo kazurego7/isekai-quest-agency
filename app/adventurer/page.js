@@ -67,7 +67,7 @@ export default function AdventurerMock() {
       <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.32em] text-primary">Adventurer</p>
-          <h1 className="font-serif text-2xl text-ink">冒険者用ダッシュボード（モック）</h1>
+          <h1 className="font-serif text-2xl text-ink">冒険者モック（ダッシュボード）</h1>
           <p className="text-sm text-muted-foreground">
             まず自分のクエスト状況を確認し、その後に募集中クエストを探す想定のモック画面です。
           </p>

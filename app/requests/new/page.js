@@ -55,26 +55,15 @@ export default function NewRequestPage() {
             <Button size="sm" asChild>
               <Link href="/requests">送信（ダミー）</Link>
             </Button>
+            <Button size="sm" variant="secondary" asChild>
+              <Link href="/requests">下書きを保存（ダミー）</Link>
+            </Button>
             <Button size="sm" variant="outline" asChild>
               <Link href="/">ホームに戻る</Link>
             </Button>
           </CardFooter>
         </Card>
 
-        <Card className="border-none bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">テンプレートのおすすめ</CardTitle>
-            <CardDescription>討伐と護衛のテンプレートを用意しています。（ダミー）</CardDescription>
-          </CardHeader>
-          <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/">トップでテンプレートを見る</Link>
-            </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <Link href="/requests">依頼一覧に戻る</Link>
-            </Button>
-          </CardFooter>
-        </Card>
       </div>
     </div>
   );

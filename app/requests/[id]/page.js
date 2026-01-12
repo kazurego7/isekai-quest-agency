@@ -108,7 +108,7 @@ function actionsByStatus(status, id) {
       return [
         { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
         { label: "送信（ダミー）", href: "/requests", variant: "default" },
-        { label: "取り下げ（ダミー）", href: "/requests", variant: "ghost" },
+        { label: "下書きの削除（ダミー）", href: "/requests", variant: "ghost" },
       ];
     case "確認前":
       return [

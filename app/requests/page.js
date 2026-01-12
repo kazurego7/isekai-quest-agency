@@ -58,7 +58,7 @@ export default function RequestsPage() {
         <header className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Requests</p>
-            <h1 className="font-serif text-2xl">依頼状況一覧</h1>
+            <h1 className="font-serif text-2xl">依頼者モック（モバイル想定）</h1>
           </div>
           <Button asChild size="sm">
             <Link href="/requests/new">新規依頼</Link>
@@ -84,19 +84,6 @@ export default function RequestsPage() {
           ))}
         </div>
 
-        <Card className="border-none bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">依頼を絞り込み</CardTitle>
-            <CardDescription>下書き / 合意待ち / 確認前 で切り替えられます。（ダミー）</CardDescription>
-          </CardHeader>
-          <CardFooter className="flex flex-wrap gap-2">
-            {["下書き", "合意待ち", "確認前"].map((label) => (
-              <Button key={label} size="sm" variant="outline">
-                {label}
-              </Button>
-            ))}
-          </CardFooter>
-        </Card>
 
         <Button variant="ghost" asChild className="w-full justify-center">
           <Link href="/">ホームに戻る</Link>

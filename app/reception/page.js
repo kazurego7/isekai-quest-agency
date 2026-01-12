@@ -85,11 +85,11 @@ const quickLinks = [
 export default function ReceptionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
-      <div className="mx-auto max-w-screen-lg px-6 pb-16 pt-10 space-y-10">
+      <div className="mx-auto w-full max-w-screen-2xl px-6 pb-16 pt-10 space-y-10">
         <header className="flex flex-col gap-4 border-b border-primary/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Receptionist</p>
-            <h1 className="font-serif text-3xl text-ink">受付嬢コンソール（PC向けダミー）</h1>
+            <h1 className="font-serif text-3xl text-ink">受付嬢モック（PC向けダミー）</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
               依頼のレビュー、調整案の合意、クエスト化までをデスクトップでまとめて操作できます。
               進行中の依頼を左のキューで確認し、右側でクエスト票の整形やチャット対応を進めます。
@@ -104,8 +104,8 @@ export default function ReceptionPage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-4">
-          <Card className="border border-border/70 bg-white/90 shadow-sm">
+        <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:auto-rows-fr">
+          <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">合意中（受付視点）</CardTitle>
@@ -113,7 +113,7 @@ export default function ReceptionPage() {
               </div>
               <CardDescription>依頼者との合意が終わっていない案件。依頼詳細を開いて対応します。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+            <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
               {inAgreement.map((item) => (
                 <div key={item.id} className="space-y-1 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
@@ -135,7 +135,7 @@ export default function ReceptionPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-primary/15 bg-white/90 shadow-sm">
+          <Card className="flex h-full flex-col border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">公開準備（依頼者と合意済みの内容）</CardTitle>
@@ -145,7 +145,7 @@ export default function ReceptionPage() {
                 冒険者に公開する前に、ランク制限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <CardContent className="grid flex-1 content-start grid-cols-1 gap-3 lg:grid-cols-2">
               {questDrafts.map((draft) => (
                 <div
                   key={draft.questId}
@@ -186,10 +186,7 @@ export default function ReceptionPage() {
               ))}
             </CardContent>
           </Card>
-        </section>
-
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card className="border border-border/70 bg-white/90 shadow-sm">
+          <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">募集中クエスト（冒険者選定）</CardTitle>
@@ -197,7 +194,7 @@ export default function ReceptionPage() {
               </div>
               <CardDescription>募集をかけているクエスト。申請順にレビューし、選定へ進みます。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+            <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
               {recruitingQuests.map((quest) => (
                 <div key={quest.questId} className="space-y-1 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
@@ -221,7 +218,7 @@ export default function ReceptionPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-border/70 bg-white/90 shadow-sm">
+          <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">クエスト完了確認</CardTitle>
@@ -229,7 +226,7 @@ export default function ReceptionPage() {
               </div>
               <CardDescription>冒険者の完了報告を確認し、達成確認を行うキューです。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 divide-y divide-border/80 p-0">
+            <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
               {completionReviews.map((quest) => (
                 <div key={quest.questId} className="space-y-1 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">

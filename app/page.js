@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,19 +13,16 @@ const roles = [
     title: "依頼者モック（モバイル想定）",
     description: "既存の依頼作成・一覧・詳細などのモバイルUI。",
     href: "/requests",
-    badge: "Requester",
   },
   {
-    title: "受付嬢コンソール（PC向けダミー）",
+    title: "受付嬢モック（PC向けダミー）",
     description: "PC操作で依頼キュー、クエスト下書き、チェックをまとめて確認。",
     href: "/reception",
-    badge: "Receptionist",
   },
   {
-    title: "冒険者用ダッシュボード（モック）",
+    title: "冒険者モック（ダッシュボード）",
     description: "クエスト受注・進行確認のダミー画面。",
     href: "/adventurer",
-    badge: "Adventurer",
   },
 ];
 
@@ -59,10 +55,9 @@ export default function Home() {
                 className="border border-border/60 bg-muted/40 shadow-sm transition hover:-translate-y-1 hover:shadow-glow"
               >
                 <CardHeader className="space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-base text-ink">{role.title}</CardTitle>
-                    <Badge variant="secondary">{role.badge}</Badge>
-                  </div>
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle className="text-base text-ink">{role.title}</CardTitle>
+                </div>
                   <CardDescription>{role.description}</CardDescription>
                 </CardHeader>
                 <CardFooter>
