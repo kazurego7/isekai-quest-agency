@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import ConfirmActionButton from "../confirm-action-button";
 
 const fields = [
   { label: "依頼タイトル", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
@@ -38,7 +39,6 @@ export default function NewRequestPage() {
                 <input
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
                   placeholder={field.placeholder}
-                  readOnly
                 />
               </label>
             ))}
@@ -47,14 +47,21 @@ export default function NewRequestPage() {
               <textarea
                 className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
                 placeholder="受付嬢へのメモを記載"
-                readOnly
               />
             </label>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" asChild>
-              <Link href="/requests">送信（ダミー）</Link>
-            </Button>
+            <ConfirmActionButton
+              href="/requests"
+              requireConfirm
+              confirmTitle="この内容で送信しますか？"
+              confirmMessage="送信後は編集できません。"
+              confirmLabel="送信する"
+              variant="default"
+              size="sm"
+            >
+              送信（ダミー）
+            </ConfirmActionButton>
             <Button size="sm" variant="secondary" asChild>
               <Link href="/requests">下書きを保存（ダミー）</Link>
             </Button>

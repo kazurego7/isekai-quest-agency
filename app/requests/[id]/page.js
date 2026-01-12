@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import ConfirmActionButton from "../confirm-action-button";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -106,9 +107,8 @@ function actionsByStatus(status, id) {
   switch (status) {
     case "下書き":
       return [
-        { label: "編集（ダミー）", href: "/requests/new", variant: "outline" },
         { label: "送信（ダミー）", href: "/requests", variant: "default" },
-        { label: "下書きの削除（ダミー）", href: "/requests", variant: "ghost" },
+        { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary" },
       ];
     case "確認前":
       return [
@@ -132,6 +132,19 @@ function actionsByStatus(status, id) {
 export default async function RequestDetail({ params }) {
   const { id } = await params;
   const request = mockRequests[id] ?? mockRequests["req-001"];
+  const isDraft = request.status === "下書き";
+  const draftActions = [
+    {
+      label: "送信（ダミー）",
+      href: "/requests",
+      variant: "default",
+      requireConfirm: true,
+      confirmTitle: "この内容で送信しますか？",
+      confirmMessage: "送信後は編集できません。",
+      confirmLabel: "送信する",
+    },
+    { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary", requireConfirm: false },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -146,35 +159,99 @@ export default async function RequestDetail({ params }) {
           </Button>
         </header>
 
-        <Card className="border border-border/70 bg-white/90 shadow-sm">
-          <CardHeader className="space-y-2">
-            <div className="flex items-start justify-between">
-              <CardTitle className="text-xl text-ink">{request.title}</CardTitle>
-              <Badge variant={statusStyle[request.status] ?? "muted"}>{request.status}</Badge>
-            </div>
-            <CardDescription>{request.notes}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 gap-3">
-              {fieldOrder.map((label) => (
-                <div
-                  key={label}
-                  className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-3 text-sm"
-                >
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="text-ink">{request.fields[label]}</span>
+        {isDraft ? (
+          <Card className="border border-primary/15 bg-white/90 shadow-sm">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">下書きの編集</CardTitle>
+                  <CardDescription>新規作成と同じ形式で入力できます。</CardDescription>
                 </div>
+                <ConfirmActionButton
+                  href="/requests"
+                  requireConfirm
+                  confirmTitle="下書きを削除しますか？"
+                  confirmMessage="削除後は元に戻せません。"
+                  confirmLabel="削除する"
+                  confirmClassName="bg-red-500 text-white hover:bg-red-600"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-full border-red-200 text-red-500 hover:border-red-300 hover:bg-red-50"
+                  ariaLabel="下書きを削除（ダミー）"
+                >
+                  ×
+                </ConfirmActionButton>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {fieldOrder.map((label) =>
+                label === "備考" ? (
+                  <label key={label} className="space-y-1">
+                    <span className="block text-sm font-semibold text-ink">{label}</span>
+                    <textarea
+                      className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                      defaultValue={request.fields[label]}
+                    />
+                  </label>
+                ) : (
+                  <label key={label} className="space-y-1">
+                    <span className="block text-sm font-semibold text-ink">{label}</span>
+                    <input
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                      defaultValue={request.fields[label]}
+                    />
+                  </label>
+                ),
+              )}
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
+              {draftActions.map((action) => (
+                <ConfirmActionButton
+                  key={action.label}
+                  href={action.href}
+                  requireConfirm={action.requireConfirm}
+                  confirmTitle={action.confirmTitle}
+                  confirmMessage={action.confirmMessage}
+                  confirmLabel={action.confirmLabel}
+                  variant={action.variant}
+                  size="sm"
+                >
+                  {action.label}
+                </ConfirmActionButton>
               ))}
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-wrap gap-2">
-            {actionsByStatus(request.status, id).map((action) => (
-              <Button key={action.label} size="sm" variant={action.variant} asChild>
-                <Link href={action.href}>{action.label}</Link>
-              </Button>
-            ))}
-          </CardFooter>
-        </Card>
+            </CardFooter>
+          </Card>
+        ) : (
+          <Card className="border border-border/70 bg-white/90 shadow-sm">
+            <CardHeader className="space-y-2">
+              <div className="flex items-start justify-between">
+                <CardTitle className="text-xl text-ink">{request.title}</CardTitle>
+                <Badge variant={statusStyle[request.status] ?? "muted"}>{request.status}</Badge>
+              </div>
+              <CardDescription>{request.notes}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                {fieldOrder.map((label) => (
+                  <div
+                    key={label}
+                    className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-3 text-sm"
+                  >
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="text-ink">{request.fields[label]}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
+              {actionsByStatus(request.status, id).map((action) => (
+                <Button key={action.label} size="sm" variant={action.variant} asChild>
+                  <Link href={action.href}>{action.label}</Link>
+                </Button>
+              ))}
+            </CardFooter>
+          </Card>
+        )}
 
         <Button variant="ghost" asChild className="w-full justify-center">
           <Link href="/">ホームに戻る</Link>
