@@ -18,6 +18,7 @@ export default function ConfirmActionButton({
   size = "sm",
   className,
   ariaLabel,
+  onConfirm,
   children,
 }) {
   const router = useRouter();
@@ -37,6 +38,9 @@ export default function ConfirmActionButton({
 
   const handleConfirm = () => {
     setOpen(false);
+    if (onConfirm) {
+      onConfirm();
+    }
     router.push(href);
   };
 

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
 
 const recruitingQuests = {
   "qst-020": {
@@ -146,7 +147,7 @@ const standbyList = [
 export default function QuestSelectionPage() {
   const params = useParams();
   const questId = typeof params?.id === "string" ? params.id : params?.id?.[0];
-  const quest = recruitingQuests[questId] ?? recruitingQuests["qst-020"];
+  const [prototypeQuest, setPrototypeQuest] = useState(null);
   const [applicantPage, setApplicantPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [activeList, setActiveList] = useState("applicants");
@@ -190,6 +191,13 @@ export default function QuestSelectionPage() {
   };
 
   useEffect(() => {
+    ensurePrototypeState();
+    const state = getPrototypeState();
+    const found = state.quests?.find((item) => item.id.toLowerCase() === questId) ?? null;
+    setPrototypeQuest(found);
+  }, [questId]);
+
+  useEffect(() => {
     if (selectedPage > selectedTotalPages) {
       setSelectedPage(selectedTotalPages);
     }
@@ -202,6 +210,11 @@ export default function QuestSelectionPage() {
   const handleAllPageChange = (nextPage) => {
     setAllPage(Math.min(Math.max(nextPage, 1), allTotalPages));
   };
+
+  const quest = useMemo(() => {
+    if (prototypeQuest) return prototypeQuest;
+    return recruitingQuests[questId] ?? recruitingQuests["qst-020"];
+  }, [prototypeQuest, questId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">

@@ -1,8 +1,12 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import ConfirmActionButton from "../confirm-action-button";
+import { createRequest } from "@/lib/prototype-store";
 
 const fields = [
   { label: "依頼タイトル", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
@@ -14,6 +18,29 @@ const fields = [
 ];
 
 export default function NewRequestPage() {
+  const [formState, setFormState] = useState(() =>
+    fields.reduce((acc, field) => {
+      acc[field.label] = "";
+      return acc;
+    }, { 備考: "" }),
+  );
+
+  const canSubmit = useMemo(() => {
+    return Boolean(formState["依頼タイトル"]);
+  }, [formState]);
+
+  const handleChange = (label, value) => {
+    setFormState((prev) => ({ ...prev, [label]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    createRequest({
+      title: formState["依頼タイトル"],
+      fields: formState,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
@@ -30,7 +57,7 @@ export default function NewRequestPage() {
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">必要な入力</CardTitle>
-            <CardDescription>入力はダミーです。送信ボタンで一覧へ戻ります。</CardDescription>
+            <CardDescription>入力後に送信すると受付のキューへ登録されます。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {fields.map((field) => (
@@ -39,6 +66,8 @@ export default function NewRequestPage() {
                 <input
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
                   placeholder={field.placeholder}
+                  value={formState[field.label]}
+                  onChange={(event) => handleChange(field.label, event.target.value)}
                 />
               </label>
             ))}
@@ -47,6 +76,8 @@ export default function NewRequestPage() {
               <textarea
                 className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
                 placeholder="受付嬢へのメモを記載"
+                value={formState["備考"]}
+                onChange={(event) => handleChange("備考", event.target.value)}
               />
             </label>
           </CardContent>
@@ -59,11 +90,13 @@ export default function NewRequestPage() {
               confirmLabel="送信する"
               variant="default"
               size="sm"
+              onConfirm={handleSubmit}
+              className={!canSubmit ? "pointer-events-none opacity-50" : undefined}
             >
-              送信（ダミー）
+              送信
             </ConfirmActionButton>
             <Button size="sm" variant="secondary" asChild>
-              <Link href="/requests">下書きを保存（ダミー）</Link>
+              <Link href="/requests">下書きを保存（プロトタイプ）</Link>
             </Button>
             <Button size="sm" variant="outline" asChild>
               <Link href="/">ホームに戻る</Link>

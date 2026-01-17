@@ -1,9 +1,18 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestReviewClient from "./quest-review-client";
+import {
+  ensurePrototypeState,
+  getPrototypeState,
+  verifyQuestCompletion,
+} from "@/lib/prototype-store";
 
 const reviewCatalog = {
   "qst-007": {
@@ -34,9 +43,37 @@ const reviewCatalog = {
   },
 };
 
-export default async function ReceptionReviewDetail({ params }) {
-  const resolvedParams = await params;
-  const quest = reviewCatalog[resolvedParams.id] ?? reviewCatalog["qst-007"];
+export default function ReceptionReviewDetail() {
+  const params = useParams();
+  const router = useRouter();
+  const [prototypeQuest, setPrototypeQuest] = useState(null);
+  const id = String(params?.id ?? "");
+
+  useEffect(() => {
+    ensurePrototypeState();
+    const state = getPrototypeState();
+    const found = state.quests?.find((item) => item.id.toLowerCase() === id);
+    setPrototypeQuest(found ?? null);
+  }, [id]);
+
+  const quest = useMemo(() => {
+    if (prototypeQuest) {
+      return {
+        ...prototypeQuest,
+        slots: prototypeQuest.slots ?? "未設定",
+        reportComment: prototypeQuest.reportComment ?? "冒険者からの報告は未入力です。",
+        checklist: prototypeQuest.checklist ?? [],
+        photos: prototypeQuest.photos ?? [],
+      };
+    }
+    return reviewCatalog[id] ?? reviewCatalog["qst-007"];
+  }, [id, prototypeQuest]);
+
+  const handleVerify = () => {
+    if (!quest?.id) return;
+    verifyQuestCompletion(quest.id);
+    router.push("/reception");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
@@ -79,7 +116,7 @@ export default async function ReceptionReviewDetail({ params }) {
             </CardContent>
           </Card>
 
-          <QuestReviewClient quest={quest} />
+          <QuestReviewClient quest={quest} onVerify={handleVerify} />
         </section>
       </div>
     </div>

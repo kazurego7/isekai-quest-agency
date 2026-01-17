@@ -1,15 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function QuestDetailClient({ quest }) {
-  const isEditable = quest.status === "進行中";
-  const fieldHint = isEditable ? "進行中の間だけ編集できます。" : "進行中で編集可能。現在は閲覧のみです。";
+export default function QuestDetailClient({ quest, onComplete }) {
+  const isEditable = quest.status === "受注済み";
+  const canComplete = quest.status === "受注済み";
+  const fieldHint = isEditable ? "受注済みの間だけ編集できます。" : "現在は閲覧のみです。";
   const [photoItems, setPhotoItems] = useState([]);
   const [activePreview, setActivePreview] = useState(null);
+  const [reportComment, setReportComment] = useState("");
+  const [checklistItems, setChecklistItems] = useState([]);
+
+  useEffect(() => {
+    setReportComment(quest.reportComment ?? "");
+    setChecklistItems(
+      (quest.checklist ?? []).map((item) => ({
+        ...item,
+        checked: Boolean(item.checked),
+      })),
+    );
+    setPhotoItems(quest.photos ?? []);
+  }, [quest.id, quest.reportComment, quest.checklist, quest.photos]);
 
   const photoCountLabel = useMemo(() => {
     if (!photoItems.length) return "写真は未選択";
@@ -24,6 +38,7 @@ export default function QuestDetailClient({ quest }) {
       name: file.name,
       size: Math.round(file.size / 1024),
       url: URL.createObjectURL(file),
+      label: file.name,
     }));
     setPhotoItems((prev) => [...prev, ...nextItems]);
     event.target.value = "";
@@ -45,12 +60,21 @@ export default function QuestDetailClient({ quest }) {
           <CardDescription>成果のチェックと写真アップロードをまとめて管理します。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          {quest.checklist.map((item) => (
+          {checklistItems.map((item) => (
             <label key={item.label} className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
               <input
                 type="checkbox"
                 className="mt-1 h-4 w-4 rounded border-border/70"
+                checked={item.checked}
                 disabled={!isEditable}
+                onChange={() => {
+                  if (!isEditable) return;
+                  setChecklistItems((prev) =>
+                    prev.map((entry) =>
+                      entry.label === item.label ? { ...entry, checked: !entry.checked } : entry,
+                    ),
+                  );
+                }}
               />
               <div>
                 <p className="font-semibold text-ink">{item.label}</p>
@@ -91,14 +115,14 @@ export default function QuestDetailClient({ quest }) {
                       onClick={() => setActivePreview(photo)}
                     >
                       <img
-                        src={photo.url}
-                        alt={photo.name}
+                        src={photo.url ?? "/file.svg"}
+                        alt={photo.name ?? photo.label}
                         className="h-28 w-full object-cover transition group-hover:scale-105"
                       />
                     </button>
                     <div className="px-2 py-2 text-xs text-muted-foreground">
-                      <p className="truncate">{photo.name}</p>
-                      <p>{photo.size}KB</p>
+                      <p className="truncate">{photo.name ?? photo.label}</p>
+                      <p>{photo.size ? `${photo.size}KB` : "サイズ不明"}</p>
                     </div>
                   </div>
                 ))}
@@ -124,13 +148,27 @@ export default function QuestDetailClient({ quest }) {
             <textarea
               className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
               placeholder="成果や注意点を記入（ダミー）"
+              value={reportComment}
+              onChange={(event) => setReportComment(event.target.value)}
               readOnly={!isEditable}
             />
           </label>
           <p className="text-xs text-muted-foreground">{fieldHint}</p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2">
-          <Button size="sm">クエスト完了（ダミー）</Button>
+          <Button
+            size="sm"
+            onClick={() =>
+              onComplete?.({
+                comment: reportComment,
+                checklist: checklistItems,
+                photos: photoItems,
+              })
+            }
+            disabled={!canComplete}
+          >
+            完了報告を送信
+          </Button>
         </CardFooter>
       </Card>
 
@@ -146,13 +184,13 @@ export default function QuestDetailClient({ quest }) {
             </button>
             <div className="overflow-hidden rounded-2xl bg-white">
               <img
-                src={activePreview.url}
-                alt={activePreview.name}
+                src={activePreview.url ?? "/file.svg"}
+                alt={activePreview.name ?? activePreview.label}
                 className="max-h-[70vh] w-full object-contain"
               />
               <div className="border-t border-border/60 px-4 py-3 text-sm text-muted-foreground">
-                <p className="font-semibold text-ink">{activePreview.name}</p>
-                <p>{activePreview.size}KB</p>
+                <p className="font-semibold text-ink">{activePreview.name ?? activePreview.label}</p>
+                <p>{activePreview.size ? `${activePreview.size}KB` : "サイズ不明"}</p>
               </div>
             </div>
           </div>

@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function QuestReviewClient({ quest }) {
+export default function QuestReviewClient({ quest, onVerify }) {
   const [activePhoto, setActivePhoto] = useState(null);
+  const [reviewNote, setReviewNote] = useState("");
+
+  useEffect(() => {
+    setReviewNote("");
+  }, [quest.id]);
 
   return (
     <>
@@ -45,7 +50,7 @@ export default function QuestReviewClient({ quest }) {
                   onClick={() => setActivePhoto(photo)}
                 >
                   <img
-                    src={photo.url}
+                    src={photo.url ?? "/file.svg"}
                     alt={photo.label}
                     className="h-24 w-full object-cover transition group-hover:scale-105"
                   />
@@ -77,7 +82,8 @@ export default function QuestReviewClient({ quest }) {
             <textarea
               className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
               placeholder="確認内容のメモ（ダミー）"
-              readOnly
+              value={reviewNote}
+              onChange={(event) => setReviewNote(event.target.value)}
             />
           </label>
           <p className="text-xs text-muted-foreground">レビュー後に達成確認を記録します（ダミー）。</p>
@@ -86,7 +92,9 @@ export default function QuestReviewClient({ quest }) {
           <Button size="sm" variant="outline">
             差し戻し（ダミー）
           </Button>
-          <Button size="sm">達成確認を記録（ダミー）</Button>
+          <Button size="sm" onClick={() => onVerify?.(reviewNote)}>
+            達成確認を記録
+          </Button>
         </CardFooter>
       </Card>
 
@@ -102,7 +110,7 @@ export default function QuestReviewClient({ quest }) {
             </button>
             <div className="overflow-hidden rounded-2xl bg-white">
               <img
-                src={activePhoto.url}
+                src={activePhoto.url ?? "/file.svg"}
                 alt={activePhoto.label}
                 className="max-h-[70vh] w-full object-contain"
               />

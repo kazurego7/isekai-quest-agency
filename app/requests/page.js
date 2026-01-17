@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,38 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const requests = [
-  {
-    id: "req-001",
-    title: "護衛 / 商隊の街道移動",
-    status: "合意待ち",
-    summary: "受付へ送信済み。受付嬢の合意を待っています。",
-  },
-  {
-    id: "req-002",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "確認前",
-    summary: "受付嬢から調整案が届きました。依頼者が内容を確認する前の状態です。",
-  },
-  {
-    id: "req-003",
-    title: "採取 / 氷花の採取",
-    status: "下書き",
-    summary: "依頼者の下書き。送信前に内容を見直せます。",
-  },
-  {
-    id: "req-004",
-    title: "討伐 / 森の魔狼",
-    status: "受注済み",
-    summary: "両者合意済み。以降は進行フェーズです。",
-  },
-  {
-    id: "req-005",
-    title: "護衛 / 貴族の街道行軍",
-    status: "完了",
-    summary: "完了済みの依頼です。履歴として参照できます。",
-  },
-];
+import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
 
 const statusStyle = {
   合意待ち: "default",
@@ -49,9 +21,26 @@ const statusStyle = {
   下書き: "outline",
   受注済み: "muted",
   完了: "muted",
+  合意済み: "secondary",
+  クエスト化済み: "secondary",
 };
 
 export default function RequestsPage() {
+  const [requests, setRequests] = useState([]);
+
+  useEffect(() => {
+    ensurePrototypeState();
+    setRequests(getPrototypeState().requests ?? []);
+  }, []);
+
+  const sortedRequests = useMemo(() => {
+    return [...requests].sort((a, b) => {
+      if (a.createdAt === "seed") return 1;
+      if (b.createdAt === "seed") return -1;
+      return String(b.createdAt).localeCompare(String(a.createdAt));
+    });
+  }, [requests]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
@@ -66,22 +55,31 @@ export default function RequestsPage() {
         </header>
 
         <div className="space-y-3">
-          {requests.map((req) => (
-            <Card key={req.id} className="border border-border/70 bg-white/90 shadow-sm">
+          {sortedRequests.length ? (
+            sortedRequests.map((req) => (
+              <Card key={req.id} className="border border-border/70 bg-white/90 shadow-sm">
+                <CardHeader className="space-y-1">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg text-ink">{req.title}</CardTitle>
+                    <Badge variant={statusStyle[req.status] ?? "muted"}>{req.status}</Badge>
+                  </div>
+                  <CardDescription>{req.summary ?? req.notes}</CardDescription>
+                </CardHeader>
+                <CardFooter className="flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" asChild className="ml-auto">
+                    <Link href={`/requests/requester/${req.id}`}>詳細を見る</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg text-ink">{req.title}</CardTitle>
-                  <Badge variant={statusStyle[req.status] ?? "muted"}>{req.status}</Badge>
-                </div>
-                <CardDescription>{req.summary}</CardDescription>
+                <CardTitle className="text-base text-ink">依頼がまだありません</CardTitle>
+                <CardDescription>「新規依頼」から依頼を作成してください。</CardDescription>
               </CardHeader>
-              <CardFooter className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" asChild className="ml-auto">
-                  <Link href={`/requests/${req.id}`}>詳細を見る</Link>
-                </Button>
-              </CardFooter>
             </Card>
-          ))}
+          )}
         </div>
 
 

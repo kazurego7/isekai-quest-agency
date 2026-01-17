@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,78 +14,42 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const inAgreement = [
-  {
-    id: "req-002",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "確認前",
-    note: "依頼者が調整案を確認中。返信待ち（受付視点）。",
-    next: "依頼詳細を見て、返信を待つ",
-    href: "/requests/req-002",
-  },
-  {
-    id: "req-001",
-    title: "護衛 / 商隊の街道移動",
-    status: "合意待ち",
-    note: "依頼者の再調整案を確認し、合意する状態。",
-    next: "依頼詳細を開いて合意判断（ダミー）",
-    href: "/requests/req-001",
-  },
-];
-
-const questDrafts = [
-  {
-    questId: "QST-019",
-    title: "討伐 / 湿地帯の魔蛇",
-    stage: "合意済み",
-    rewards: "120,000G（案）",
-    risk: "毒・沼地 / 同行3名",
-    rank: "Bランク以上",
-    deliverables: "討伐証明部位 + 現地写真（代替可）",
-    supplies: "解毒薬2本 / 地図支給 / 簡易テント",
-    mapNotes: "沼地東側の浅瀬を通行。夜間は迂回指示。",
-  },
-];
-
-const recruitingQuests = [
-  {
-    questId: "QST-020",
-    title: "護衛 / 商隊の街道移動",
-    status: "募集中",
-    applicants: 4,
-    needed: "2名（盾役1名必須）",
-    note: "申請は先着順でレビュー。急ぎのため受付対応優先。",
-    href: "/reception/quests/qst-020",
-  },
-  {
-    questId: "QST-019",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "募集中",
-    applicants: 2,
-    needed: "3名（前衛1 / 後衛1 / 支援1）",
-    note: "申請数不足。推薦枠から追加選定可能。",
-    href: "/reception/quests/qst-019",
-  },
-];
-
-const completionReviews = [
-  {
-    questId: "QST-007",
-    title: "討伐 / 森の魔狼",
-    status: "評価待ち",
-    party: "冒険者2名 / 報告済み",
-    note: "冒険者の完了報告を確認し、達成確認を記録。",
-    href: "/reception/reviews/qst-007",
-  },
-];
+import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
 
 const quickLinks = [
   { label: "依頼一覧", href: "/requests", variant: "outline" },
-  { label: "下書き調整へ", href: "/requests/req-002/adjust", variant: "secondary" },
+  { label: "下書き調整へ", href: "/requests/reception/req-002/adjust", variant: "secondary" },
   { label: "トップへ戻る", href: "/", variant: "ghost" },
 ];
 
 export default function ReceptionPage() {
+  const [prototypeState, setPrototypeState] = useState({ requests: [], quests: [] });
+
+  useEffect(() => {
+    ensurePrototypeState();
+    setPrototypeState(getPrototypeState());
+  }, []);
+
+  const inAgreement = useMemo(() => {
+    return (prototypeState.requests ?? []).filter((item) =>
+      ["確認前", "合意待ち"].includes(item.status),
+    );
+  }, [prototypeState.requests]);
+
+  const questDrafts = useMemo(() => {
+    return (prototypeState.requests ?? []).filter((item) =>
+      ["合意済み", "クエスト化済み"].includes(item.status),
+    );
+  }, [prototypeState.requests]);
+
+  const recruitingQuests = useMemo(() => {
+    return (prototypeState.quests ?? []).filter((item) => item.status === "募集中");
+  }, [prototypeState.quests]);
+
+  const completionReviews = useMemo(() => {
+    return (prototypeState.quests ?? []).filter((item) => item.status === "完了報告済み");
+  }, [prototypeState.quests]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
       <div className="mx-auto w-full max-w-screen-2xl px-6 pb-16 pt-10 space-y-10">
@@ -114,24 +81,30 @@ export default function ReceptionPage() {
               <CardDescription>依頼者との合意が終わっていない案件。依頼詳細を開いて対応します。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {inAgreement.map((item) => (
-                <div key={item.id} className="space-y-1 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-ink">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">ID: {item.id}</p>
+              {inAgreement.length ? (
+                inAgreement.map((item) => (
+                  <div key={item.id} className="space-y-1 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-ink">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">ID: {item.id}</p>
+                      </div>
+                      <Badge variant="muted">{item.status}</Badge>
                     </div>
-                    <Badge variant="muted">{item.status}</Badge>
+                    <p className="text-xs text-muted-foreground">{item.notes}</p>
+                    <p className="text-xs text-ink">次のアクション: 依頼内容の確認</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="text-xs" asChild>
+                        <Link href={`/requests/reception/${item.id}`}>依頼詳細を開く</Link>
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{item.note}</p>
-                  <p className="text-xs text-ink">次のアクション: {item.next}</p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="text-xs" asChild>
-                      <Link href={item.href}>依頼詳細を開く</Link>
-                    </Button>
-                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  現在の確認待ち依頼はありません。
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -146,44 +119,40 @@ export default function ReceptionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid flex-1 content-start grid-cols-1 gap-3 lg:grid-cols-2">
-              {questDrafts.map((draft) => (
-                <div
-                  key={draft.questId}
-                  className="space-y-2 rounded-lg border border-border/70 bg-muted/40 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{draft.questId}</p>
-                      <p className="text-base font-semibold text-ink">{draft.title}</p>
+              {questDrafts.length ? (
+                questDrafts.map((draft) => (
+                  <div
+                    key={draft.id}
+                    className="space-y-2 rounded-lg border border-border/70 bg-muted/40 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.28em] text-primary">{draft.id}</p>
+                        <p className="text-base font-semibold text-ink">{draft.title}</p>
+                      </div>
+                    <Badge variant="muted">{draft.status}</Badge>
+                  </div>
+                  <p className="text-sm text-ink">報酬案: {draft.fields["報酬上限額"] ?? "未設定"}</p>
+                  <p className="text-sm text-muted-foreground">リスク: {draft.fields["危険度・同行条件"] ?? "未設定"}</p>
+                  {draft.status === "合意済み" ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
+                        <Link href={`/reception/questify?requestId=${draft.id}`}>クエスト化へ</Link>
+                      </Button>
+                      <span className="text-[11px] text-muted-foreground">合意済みのため公開準備へ進めます</span>
                     </div>
-                    <Badge variant="muted">{draft.stage}</Badge>
-                  </div>
-                  <p className="text-sm text-ink">報酬案: {draft.rewards}</p>
-                  <p className="text-sm text-muted-foreground">リスク: {draft.risk}</p>
-              <div className="rounded-lg border border-border/60 bg-white/70 p-3 text-xs space-y-1">
-                <p className="font-semibold text-ink">公開前チェック（必須情報）</p>
-                <p className="text-ink">ランク制限: {draft.rank}</p>
-                <p className="text-ink">成果物 / 評価基準: {draft.deliverables}</p>
-                <p className="text-ink">ギルド支給物: {draft.supplies}</p>
-                <p className="text-ink">地図 / 注意事項: {draft.mapNotes}</p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                公開時: ランク/成果物/支給物/注意事項が公開文面に含まれているか最終確認（ダミー）
-              </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {draft.stage === "合意済み" ? (
-                      <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
-                        <Link href="/reception/questify">クエスト化へ（ダミー）</Link>
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
-                        <Link href={`/reception/quests/${draft.questId.toLowerCase()}`}>冒険者選定へ（ダミー）</Link>
-                      </Button>
-                    )}
-                    <span className="text-[11px] text-muted-foreground">クエスト化完了で即公開（ダミー）</span>
-                  </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      公開済みのため、募集状況は冒険者側ダッシュボードで確認できます。
+                    </p>
+                  )}
                 </div>
-              ))}
+              ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/60 bg-white/70 p-4 text-sm text-muted-foreground">
+                  公開準備中の依頼はありません。
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">
@@ -195,26 +164,30 @@ export default function ReceptionPage() {
               <CardDescription>募集をかけているクエスト。申請順にレビューし、選定へ進みます。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {recruitingQuests.map((quest) => (
-                <div key={quest.questId} className="space-y-1 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.questId}</p>
-                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        申請: {quest.applicants}名 / 必要枠: {quest.needed}
-                      </p>
+              {recruitingQuests.length ? (
+                recruitingQuests.map((quest) => (
+                  <div key={quest.id} className="space-y-1 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
+                        <p className="text-sm font-semibold text-ink">{quest.title}</p>
+                        <p className="text-xs text-muted-foreground">報酬: {quest.reward}</p>
+                      </div>
+                      <Badge variant="muted">{quest.status}</Badge>
                     </div>
-                    <Badge variant="muted">{quest.status}</Badge>
+                    <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="text-xs" asChild>
+                        <Link href={`/reception/quests/${quest.id.toLowerCase()}`}>選定へ</Link>
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{quest.note}</p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="text-xs" asChild>
-                      <Link href={quest.href}>選定へ</Link>
-                    </Button>
-                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  募集中のクエストはありません。
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -227,24 +200,30 @@ export default function ReceptionPage() {
               <CardDescription>冒険者の完了報告を確認し、達成確認を行うキューです。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {completionReviews.map((quest) => (
-                <div key={quest.questId} className="space-y-1 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.questId}</p>
-                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
-                      <p className="text-xs text-muted-foreground">{quest.party}</p>
+              {completionReviews.length ? (
+                completionReviews.map((quest) => (
+                  <div key={quest.id} className="space-y-1 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
+                        <p className="text-sm font-semibold text-ink">{quest.title}</p>
+                        <p className="text-xs text-muted-foreground">完了報告受付済み</p>
+                      </div>
+                      <Badge variant="muted">評価待ち</Badge>
                     </div>
-                    <Badge variant="muted">{quest.status}</Badge>
+                    <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="text-xs" asChild>
+                        <Link href={`/reception/reviews/${quest.id.toLowerCase()}`}>完了報告を確認</Link>
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{quest.note}</p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="text-xs" asChild>
-                      <Link href={quest.href}>完了報告を確認（ダミー）</Link>
-                    </Button>
-                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  完了報告の確認待ちはありません。
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </section>

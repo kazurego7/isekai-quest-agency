@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import ConfirmActionButton from "../confirm-action-button";
+import ConfirmActionButton from "../../confirm-action-button";
+import { ensurePrototypeState, getPrototypeState, updateRequestAgreement } from "@/lib/prototype-store";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -101,37 +106,86 @@ const statusStyle = {
   下書き: "outline",
   受注済み: "muted",
   完了: "muted",
+  合意済み: "secondary",
+  クエスト化済み: "secondary",
 };
 
-function actionsByStatus(status, id) {
+function actionsByStatus(status) {
   switch (status) {
     case "下書き":
       return [
         { label: "送信（ダミー）", href: "/requests", variant: "default" },
         { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary" },
       ];
-    case "確認前":
-      return [
-        { label: "合意する（ダミー）", href: "/requests", variant: "default" },
-        { label: "調整を送る（ダミー）", href: `/requests/${id}/adjust`, variant: "outline" },
-      ];
-    case "合意待ち":
-      return [
-        { label: "合意する（ダミー）", href: "/requests", variant: "default" },
-        { label: "調整を送る（ダミー）", href: `/requests/${id}/adjust`, variant: "outline" },
-      ];
+    case "合意済み":
+      return [{ label: "合意済み", href: "/requests", variant: "ghost" }];
     case "受注済み":
       return [{ label: "参照のみ", href: "/requests", variant: "ghost" }];
     case "完了":
       return [{ label: "完了済みの履歴", href: "/requests", variant: "ghost" }];
+    case "クエスト化済み":
+      return [{ label: "募集状況を見る", href: "/adventurer", variant: "outline" }];
     default:
       return [];
   }
 }
 
-export default async function RequestDetail({ params }) {
-  const { id } = await params;
-  const request = mockRequests[id] ?? mockRequests["req-001"];
+export default function RequestDetail() {
+  const params = useParams();
+  const router = useRouter();
+  const [prototypeRequest, setPrototypeRequest] = useState(null);
+  const id = typeof params?.id === "string" ? params.id : params?.id?.[0] ?? "";
+  const role =
+    params?.role === "reception" ? "reception" : params?.role === "requester" ? "requester" : null;
+  const isRoleValid = Boolean(role);
+  const roleForLinks = role ?? "requester";
+  const listHref = role === "reception" ? "/reception" : "/requests";
+
+  useEffect(() => {
+    ensurePrototypeState();
+    const state = getPrototypeState();
+    const found = state.requests?.find((item) => item.id === id);
+    setPrototypeRequest(found ?? null);
+  }, [id]);
+
+  const request = useMemo(() => {
+    if (prototypeRequest) return prototypeRequest;
+    return mockRequests[id] ?? mockRequests["req-001"];
+  }, [id, prototypeRequest]);
+
+  const agreement = useMemo(() => {
+    if (prototypeRequest?.agreement) return prototypeRequest.agreement;
+    if (request.status === "確認前") {
+      return { requesterAgreed: true, receptionistAgreed: false };
+    }
+    if (request.status === "合意待ち") {
+      return roleForLinks === "reception"
+        ? { requesterAgreed: true, receptionistAgreed: false }
+        : { requesterAgreed: false, receptionistAgreed: true };
+    }
+    return { requesterAgreed: false, receptionistAgreed: false };
+  }, [prototypeRequest, request.status, roleForLinks]);
+
+  const selfAgreed =
+    roleForLinks === "reception" ? agreement.receptionistAgreed : agreement.requesterAgreed;
+  const otherAgreed =
+    roleForLinks === "reception" ? agreement.requesterAgreed : agreement.receptionistAgreed;
+  const canAgree = isRoleValid && ["確認前", "合意待ち"].includes(request.status) && !selfAgreed;
+  const canAdjust = useMemo(() => {
+    if (!isRoleValid) return false;
+    if (request.status !== "確認前" && request.status !== "合意待ち") return false;
+    return otherAgreed && !selfAgreed;
+  }, [isRoleValid, otherAgreed, request.status, selfAgreed]);
+  const canShowActions = isRoleValid && !canAgree && !canAdjust;
+
+  const handleAgree = () => {
+    if (!prototypeRequest || !isRoleValid) {
+      router.push(listHref);
+      return;
+    }
+    updateRequestAgreement(request.id, roleForLinks);
+    router.push(listHref);
+  };
   const isDraft = request.status === "下書き";
   const draftActions = [
     {
@@ -155,7 +209,7 @@ export default async function RequestDetail({ params }) {
             <h1 className="font-serif text-2xl">依頼詳細</h1>
           </div>
           <Button size="sm" variant="outline" asChild>
-            <Link href="/requests">一覧へ</Link>
+            <Link href={listHref}>一覧へ</Link>
           </Button>
         </header>
 
@@ -244,11 +298,40 @@ export default async function RequestDetail({ params }) {
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
-              {actionsByStatus(request.status, id).map((action) => (
-                <Button key={action.label} size="sm" variant={action.variant} asChild>
-                  <Link href={action.href}>{action.label}</Link>
+              {canAgree ? (
+                <ConfirmActionButton
+                  href={role === "reception" ? "/reception" : "/requests"}
+                  requireConfirm
+                  confirmTitle="合意しますか？"
+                  confirmMessage="合意後は合意済みとなり、クエスト化の準備に進みます。"
+                  confirmLabel="合意する"
+                  variant="default"
+                  size="sm"
+                  onConfirm={handleAgree}
+                >
+                  合意する
+                </ConfirmActionButton>
+              ) : null}
+              {canAdjust ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/requests/${roleForLinks}/${id}/adjust`}>調整を送る</Link>
                 </Button>
-              ))}
+              ) : null}
+              {canShowActions
+                ? actionsByStatus(request.status).map((action) => (
+                    <Button key={action.label} size="sm" variant={action.variant} asChild>
+                      <Link
+                        href={
+                          roleForLinks === "reception" && action.href === "/requests"
+                            ? "/reception"
+                            : action.href
+                        }
+                      >
+                        {action.label}
+                      </Link>
+                    </Button>
+                  ))
+                : null}
             </CardFooter>
           </Card>
         )}

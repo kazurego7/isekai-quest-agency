@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import ConfirmActionButton from "../../../confirm-action-button";
+import { ensurePrototypeState, getPrototypeState, updateRequestAdjustment } from "@/lib/prototype-store";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -89,8 +95,70 @@ const adjustDrafts = {
   },
 };
 
-export default function AdjustPage({ params }) {
-  const draft = adjustDrafts[params.id] ?? adjustDrafts["req-001"];
+export default function AdjustPage() {
+  const params = useParams();
+  const router = useRouter();
+  const requestId = typeof params?.id === "string" ? params.id : params?.id?.[0];
+  const [prototypeRequest, setPrototypeRequest] = useState(null);
+  const role =
+    params?.role === "reception" ? "reception" : params?.role === "requester" ? "requester" : null;
+  const isRoleValid = Boolean(role);
+  const roleForLinks = role ?? "requester";
+  const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
+
+  useEffect(() => {
+    ensurePrototypeState();
+    const state = getPrototypeState();
+    const found = state.requests?.find((item) => item.id === requestId) ?? null;
+    setPrototypeRequest(found);
+  }, [requestId]);
+
+  const draft = useMemo(() => {
+    if (prototypeRequest) {
+      return {
+        title: prototypeRequest.title,
+        before: prototypeRequest.fields,
+        suggested: prototypeRequest.fields,
+        reason: "調整の理由を記載",
+      };
+    }
+    return adjustDrafts[requestId] ?? adjustDrafts["req-001"];
+  }, [prototypeRequest, requestId]);
+
+  const [suggestedFields, setSuggestedFields] = useState(() => draft.suggested);
+  const [reason, setReason] = useState(draft.reason);
+
+  useEffect(() => {
+    setSuggestedFields(draft.suggested);
+    setReason(draft.reason);
+  }, [draft]);
+
+  const inferredAgreement = useMemo(() => {
+    if (prototypeRequest?.agreement) return prototypeRequest.agreement;
+    if (prototypeRequest?.status === "確認前") {
+      return { requesterAgreed: true, receptionistAgreed: false };
+    }
+    if (prototypeRequest?.status === "合意待ち") {
+      return roleForLinks === "reception"
+        ? { requesterAgreed: true, receptionistAgreed: false }
+        : { requesterAgreed: false, receptionistAgreed: true };
+    }
+    return { requesterAgreed: false, receptionistAgreed: false };
+  }, [prototypeRequest, roleForLinks]);
+
+  const isLocked =
+    roleForLinks === "reception" ? inferredAgreement.receptionistAgreed : inferredAgreement.requesterAgreed;
+  const canSubmit = Boolean(prototypeRequest) && !isLocked && isRoleValid;
+
+  const handleFieldChange = (label, value) => {
+    setSuggestedFields((prev) => ({ ...prev, [label]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!requestId || !canSubmit) return;
+    updateRequestAdjustment(requestId, suggestedFields, reason, roleForLinks);
+    router.push(`/requests/${roleForLinks}/${requestId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -98,24 +166,29 @@ export default function AdjustPage({ params }) {
         <header className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
-            <h1 className="font-serif text-2xl">依頼調整（ダミー）</h1>
+            <h1 className="font-serif text-2xl">依頼調整</h1>
             <p className="text-sm text-muted-foreground">
               依頼者と受付嬢が交互に「合意」または「調整」を送ります。この画面では調整案のみ送信し、合意は詳細画面で行う想定です（誤合意防止のため）。
             </p>
+            {isLocked ? (
+              <p className="text-xs text-amber-600">
+                相手の合意待ちのため、現在は修正できません。
+              </p>
+            ) : null}
             <div className="mt-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-ink">
               <p className="font-semibold text-ink">合意ラリーの流れ（例）</p>
               <p>依頼者が依頼送信 → 受付嬢が合意 or 調整 → 依頼者が合意 or 再調整 → 受付嬢が合意</p>
             </div>
           </div>
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/requests/${params.id}`}>詳細へ戻る</Link>
+            <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
           </Button>
         </header>
 
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">{draft.title}</CardTitle>
-            <CardDescription>調整前と調整後を上下で比較しながら入力できます（ダミー）。</CardDescription>
+            <CardDescription>調整前と調整後を上下で比較しながら入力できます。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {fieldOrder.map((label) => (
@@ -128,11 +201,13 @@ export default function AdjustPage({ params }) {
                   <input
                     className="w-full rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-sm text-foreground outline-none"
                     readOnly
-                    defaultValue={draft.before[label]}
+                    value={draft.before?.[label] ?? ""}
                   />
                   <input
                     className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                    defaultValue={draft.suggested[label]}
+                    value={suggestedFields?.[label] ?? ""}
+                    onChange={(event) => handleFieldChange(label, event.target.value)}
+                    readOnly={isLocked}
                   />
                 </div>
               </div>
@@ -141,16 +216,28 @@ export default function AdjustPage({ params }) {
               <p className="text-sm font-semibold text-ink">調整理由</p>
               <textarea
                 className="h-24 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                defaultValue={draft.reason}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                readOnly={isLocked}
               />
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" asChild>
-              <Link href={`/requests/${params.id}`}>今回の提案を送信（ダミー）</Link>
-            </Button>
+            <ConfirmActionButton
+              href={`/requests/${roleForLinks}/${requestId}`}
+              requireConfirm
+              confirmTitle="調整案を送信しますか？"
+              confirmMessage={`送信後は${waitingLabel}の合意待ちになります。`}
+              confirmLabel="送信する"
+              variant="default"
+              size="sm"
+              onConfirm={handleSubmit}
+              className={!canSubmit ? "pointer-events-none opacity-50" : undefined}
+            >
+              今回の提案を送信
+            </ConfirmActionButton>
             <Button size="sm" variant="ghost" asChild>
-              <Link href={`/requests/${params.id}`}>送らず戻る</Link>
+              <Link href={`/requests/${roleForLinks}/${requestId}`}>送らず戻る</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -159,7 +246,7 @@ export default function AdjustPage({ params }) {
           <CardHeader>
             <CardTitle className="text-lg">合意ルール（ダミー）</CardTitle>
             <CardDescription>
-              調整を送った側は受付嬢の合意待ちとなり、自分（依頼者）は合意済みとみなされます。
+              調整を送った側は合意済みとなり、相手の合意待ちになります。
             </CardDescription>
           </CardHeader>
         </Card>

@@ -1,9 +1,19 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestDetailClient from "./quest-detail-client";
+import {
+  acceptQuest,
+  ensurePrototypeState,
+  getPrototypeState,
+  submitQuestReport,
+} from "@/lib/prototype-store";
 
 const questCatalog = {
   "qst-019": {
@@ -122,9 +132,35 @@ const questCatalog = {
   },
 };
 
-export default async function AdventurerQuestDetail({ params }) {
-  const resolvedParams = await params;
-  const quest = questCatalog[resolvedParams.id] ?? questCatalog["qst-010"];
+export default function AdventurerQuestDetail() {
+  const params = useParams();
+  const router = useRouter();
+  const [prototypeQuest, setPrototypeQuest] = useState(null);
+  const id = String(params?.id ?? "");
+
+  useEffect(() => {
+    ensurePrototypeState();
+    const state = getPrototypeState();
+    const found = state.quests?.find((item) => item.id.toLowerCase() === id);
+    setPrototypeQuest(found ?? null);
+  }, [id]);
+
+  const quest = useMemo(() => {
+    if (prototypeQuest) return prototypeQuest;
+    return questCatalog[id] ?? questCatalog["qst-010"];
+  }, [id, prototypeQuest]);
+
+  const handleAccept = () => {
+    if (!quest?.id) return;
+    acceptQuest(quest.id);
+    router.push("/adventurer");
+  };
+
+  const handleComplete = (reportComment) => {
+    if (!quest?.id) return;
+    submitQuestReport(quest.id, reportComment);
+    router.push("/adventurer");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -150,6 +186,7 @@ export default async function AdventurerQuestDetail({ params }) {
             <Badge variant="secondary">{quest.status}</Badge>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <InfoRow label="募集枠" value={quest.slots ?? "未設定"} />
             <InfoRow label="報酬" value={quest.reward} />
             <InfoRow label="ランク制限" value={quest.rank} />
             <InfoRow label="クエスト詳細" value={quest.detail} />
@@ -159,9 +196,16 @@ export default async function AdventurerQuestDetail({ params }) {
             <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
             <InfoRow label="連絡方法" value={quest.channel} />
           </CardContent>
+          {quest.status === "募集中" ? (
+            <CardFooter className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={handleAccept}>
+                受注する
+              </Button>
+            </CardFooter>
+          ) : null}
         </Card>
 
-        <QuestDetailClient quest={quest} />
+        <QuestDetailClient quest={quest} onComplete={handleComplete} />
       </div>
     </div>
   );
