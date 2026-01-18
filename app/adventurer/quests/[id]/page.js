@@ -8,159 +8,124 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestDetailClient from "./quest-detail-client";
-import {
-  acceptQuest,
-  ensurePrototypeState,
-  getPrototypeState,
-  submitQuestReport,
-} from "@/lib/prototype-store";
-
-const questCatalog = {
-  "qst-019": {
-    id: "QST-019",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "募集中",
-    reward: "120,000G",
-    rank: "Bランク以上（毒耐性必須）",
-    detail: "湿地帯中央の古井戸付近に出現。単独討伐で討伐証明を回収。",
-    deliverables: "討伐証明（牙または鱗）",
-    supplies: "解毒薬 / 照明具",
-    mapNotes: "湿地帯の東側。足場注意。",
-    risk: "毒霧 / 水中戦",
-    channel: "ギルドチャット / 緊急時は伝令鳥",
-    summary: "魔蛇1体の討伐と討伐証明の提出。",
-    checklist: [
-      { label: "討伐証明の回収", note: "牙または鱗" },
-      { label: "討伐地点の座標記録", note: "簡易メモで可" },
-      { label: "依頼者への引き渡し準備", note: "写真も推奨" },
-    ],
-  },
-  "qst-020": {
-    id: "QST-020",
-    title: "護衛 / 商隊の街道移動",
-    status: "募集中",
-    reward: "90,000G",
-    rank: "Cランク以上（盾役1名必須）",
-    detail: "護衛ルートは宿場町経由。夜間は野営し、日中に移動する。",
-    deliverables: "護衛完了報告と商隊代表の署名",
-    supplies: "松明 / 予備馬1頭 / 連絡用笛",
-    mapNotes: "宿場町で合流。森の迂回路を利用し、夜間は停止。",
-    risk: "夜間警戒 / 同行2名",
-    channel: "ギルドチャット / 緊急時は鐘楼",
-    summary: "商隊の護衛完了と代表者署名を提出。",
-    checklist: [
-      { label: "護衛完了報告の署名", note: "代表者の署名" },
-      { label: "危険箇所の記録", note: "迂回路メモ" },
-      { label: "荷車の破損チェック", note: "任意" },
-    ],
-  },
-  "qst-003": {
-    id: "QST-003",
-    title: "調査 / 古代遺跡の地形",
-    status: "申請中",
-    reward: "70,000G",
-    rank: "Cランク以上",
-    detail: "遺跡内の通路を簡易スケッチ。危険箇所を赤印で記録。",
-    deliverables: "遺跡の簡易地図と危険箇所メモ",
-    supplies: "測量ロープ / マーカー",
-    mapNotes: "北の古代遺跡。入口付近に目印あり。",
-    risk: "落盤 / 迷路化",
-    channel: "ギルドチャット",
-    summary: "遺跡内の通路と危険箇所を簡易地図で提出。",
-    checklist: [
-      { label: "主要通路の記録", note: "簡易地図" },
-      { label: "危険箇所の記録", note: "崩落/罠" },
-      { label: "入口付近の写真", note: "目印用" },
-    ],
-  },
-  "qst-010": {
-    id: "QST-010",
-    title: "採取 / 氷花の採取",
-    status: "進行中",
-    reward: "45,000G",
-    rank: "Dランク以上",
-    detail: "氷結の谷の北側斜面で採取。滑落防止に縄を使用。",
-    deliverables: "氷花5束と採取写真",
-    supplies: "保温手袋 / 保冷箱",
-    mapNotes: "氷結の谷。滑落しやすい箇所に縄あり。",
-    risk: "低温 / 滑落注意",
-    channel: "ギルドチャット",
-    summary: "氷花を5束採取し、写真と簡易レポートを提出。",
-    checklist: [
-      { label: "氷花5束の採取", note: "束の写真が必須" },
-      { label: "採取地点の座標記録", note: "簡易メモ" },
-      { label: "天候/気温のメモ", note: "任意" },
-    ],
-  },
-  "qst-007": {
-    id: "QST-007",
-    title: "討伐 / 森の魔狼",
-    status: "評価待ち",
-    reward: "110,000G",
-    rank: "Bランク以上",
-    detail: "夜間の群れに注意。討伐後は現地で簡易報告を作成。",
-    deliverables: "討伐証明と簡易報告",
-    supplies: "応急手当具",
-    mapNotes: "緑陰の森。夜間は視界不良。",
-    risk: "夜間襲撃 / 群れ",
-    channel: "ギルドチャット",
-    summary: "討伐完了報告済み。受付の評価待ち。",
-    checklist: [
-      { label: "討伐証明の提出", note: "牙の提出済み" },
-      { label: "討伐地点の記録", note: "提出済み" },
-      { label: "同行者の報告", note: "任意" },
-    ],
-  },
-  "qst-002": {
-    id: "QST-002",
-    title: "採取 / 星砂の採集",
-    status: "完了",
-    reward: "30,000G",
-    rank: "Eランク以上",
-    detail: "夜間に採集。星砂は夜露のタイミングで回収。",
-    deliverables: "星砂3瓶と採集写真",
-    supplies: "ランタン / 砂除け布",
-    mapNotes: "夜の砂丘。月明かりが強い日に実施。",
-    risk: "視界不良",
-    channel: "ギルドチャット",
-    summary: "報酬支払い済み。履歴として保存。",
-    checklist: [
-      { label: "星砂3瓶の採集", note: "提出済み" },
-      { label: "採集地点の写真", note: "提出済み" },
-      { label: "受取確認", note: "完了" },
-    ],
-  },
-};
 
 export default function AdventurerQuestDetail() {
   const params = useParams();
   const router = useRouter();
-  const [prototypeQuest, setPrototypeQuest] = useState(null);
+  const [quest, setQuest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
 
   useEffect(() => {
-    ensurePrototypeState();
-    const state = getPrototypeState();
-    const found = state.quests?.find((item) => item.id.toLowerCase() === id);
-    setPrototypeQuest(found ?? null);
+    if (!id) return;
+    let active = true;
+    setIsLoading(true);
+    fetch(`/api/quests/${id}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setQuest(data.quest ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setQuest(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  const quest = useMemo(() => {
-    if (prototypeQuest) return prototypeQuest;
-    return questCatalog[id] ?? questCatalog["qst-010"];
-  }, [id, prototypeQuest]);
+  const normalizedQuest = useMemo(() => {
+    if (!quest) return null;
+    return {
+      ...quest,
+      slots: quest.slots ?? "未設定",
+      checklist: quest.checklist ?? [],
+      photos: quest.photos ?? [],
+      reportComment: quest.reportComment ?? "",
+      reward: quest.reward ?? "未設定",
+      rank: quest.rank ?? "未設定",
+      detail: quest.detail ?? "未設定",
+      risk: quest.risk ?? "未設定",
+      deliverables: quest.deliverables ?? "未設定",
+      supplies: quest.supplies ?? "未設定",
+      mapNotes: quest.mapNotes ?? "未設定",
+      channel: quest.channel ?? "未設定",
+      summary: quest.summary ?? "詳細は受付で確認",
+    };
+  }, [quest]);
 
   const handleAccept = () => {
-    if (!quest?.id) return;
-    acceptQuest(quest.id);
-    router.push("/adventurer");
+    if (!normalizedQuest?.id) return;
+    return fetch(`/api/quests/${normalizedQuest.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "accept" }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("受注に失敗しました。");
+      }
+      router.push("/adventurer");
+    });
   };
 
   const handleComplete = (reportComment) => {
-    if (!quest?.id) return;
-    submitQuestReport(quest.id, reportComment);
-    router.push("/adventurer");
+    if (!normalizedQuest?.id) return;
+    return fetch(`/api/quests/${normalizedQuest.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "report",
+        reportComment: reportComment?.comment ?? reportComment ?? "",
+        checklist: reportComment?.checklist ?? [],
+        photos: reportComment?.photos ?? [],
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("完了報告に失敗しました。");
+      }
+      router.push("/adventurer");
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+              <CardDescription>クエスト詳細を取得しています。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!normalizedQuest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">クエストが見つかりません</CardTitle>
+              <CardDescription>一覧からクエストを選び直してください。</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/adventurer">一覧へ戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -179,24 +144,24 @@ export default function AdventurerQuestDetail() {
         <Card className="border-primary/15 bg-white/90 shadow-sm">
           <CardHeader className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
-              <CardTitle className="text-lg text-ink">{quest.title}</CardTitle>
-              <CardDescription>{quest.summary}</CardDescription>
+              <p className="text-xs uppercase tracking-[0.28em] text-primary">{normalizedQuest.id}</p>
+              <CardTitle className="text-lg text-ink">{normalizedQuest.title}</CardTitle>
+              <CardDescription>{normalizedQuest.summary}</CardDescription>
             </div>
-            <Badge variant="secondary">{quest.status}</Badge>
+            <Badge variant="secondary">{normalizedQuest.status}</Badge>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <InfoRow label="募集枠" value={quest.slots ?? "未設定"} />
-            <InfoRow label="報酬" value={quest.reward} />
-            <InfoRow label="ランク制限" value={quest.rank} />
-            <InfoRow label="クエスト詳細" value={quest.detail} />
-            <InfoRow label="リスク" value={quest.risk} />
-            <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
-            <InfoRow label="ギルド支給物" value={quest.supplies} />
-            <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
-            <InfoRow label="連絡方法" value={quest.channel} />
+            <InfoRow label="募集枠" value={normalizedQuest.slots} />
+            <InfoRow label="報酬" value={normalizedQuest.reward} />
+            <InfoRow label="ランク制限" value={normalizedQuest.rank} />
+            <InfoRow label="クエスト詳細" value={normalizedQuest.detail} />
+            <InfoRow label="リスク" value={normalizedQuest.risk} />
+            <InfoRow label="成果物 / 評価基準" value={normalizedQuest.deliverables} />
+            <InfoRow label="ギルド支給物" value={normalizedQuest.supplies} />
+            <InfoRow label="地図 / 注意事項" value={normalizedQuest.mapNotes} />
+            <InfoRow label="連絡方法" value={normalizedQuest.channel} />
           </CardContent>
-          {quest.status === "募集中" ? (
+          {normalizedQuest.status === "募集中" ? (
             <CardFooter className="flex flex-wrap gap-2">
               <Button size="sm" onClick={handleAccept}>
                 受注する
@@ -205,7 +170,7 @@ export default function AdventurerQuestDetail() {
           ) : null}
         </Card>
 
-        <QuestDetailClient quest={quest} onComplete={handleComplete} />
+        <QuestDetailClient quest={normalizedQuest} onComplete={handleComplete} />
       </div>
     </div>
   );

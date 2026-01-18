@@ -8,11 +8,28 @@ datasource db {
 }
 
 model Quest {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  requestId    String?
+  title        String
+  status       String
+  reward       String?
+  rank         String?
+  detail       String?
+  deliverables String?
+  supplies     String?
+  mapNotes     String?
+  risk         String?
+  channel      String?
+  slots        String?
+  summary      String?
+  reportComment String?
+  reviewNote   String?
+  checklist    Json?
+  photos       Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  request      Request? @relation(fields: [requestId], references: [id])
 }
 
 model Request {
@@ -26,4 +43,6 @@ model Request {
   receptionistAgreed Boolean @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  quests            Quest[]
 }

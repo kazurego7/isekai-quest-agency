@@ -7,39 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
-
-const recruitingQuests = {
-  "qst-020": {
-    id: "QST-020",
-    title: "護衛 / 商隊の街道移動",
-    status: "募集中",
-    reward: "90,000G",
-    rank: "Cランク以上（盾役1名必須）",
-    detail: "護衛ルートは宿場町経由。夜間は野営し、日中に移動する。",
-    deliverables: "護衛完了報告と商隊代表の署名",
-    supplies: "松明 / 予備馬1頭 / 連絡用笛",
-    mapNotes: "宿場町で合流。森の迂回路を利用し、夜間は停止。",
-    risk: "夜間警戒 / 同行2名",
-    channel: "ギルドチャット / 緊急時は鐘楼",
-    slots: "2名（盾役1名必須）",
-  },
-  "qst-019": {
-    id: "QST-019",
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "募集中",
-    reward: "120,000G",
-    rank: "Bランク以上",
-    detail: "沼地に生息する魔蛇の討伐。毒対策と地形把握が重要。",
-    deliverables: "討伐証明部位 + 現地写真（代替可）",
-    supplies: "解毒薬2本 / 地図支給 / 簡易テント",
-    mapNotes: "沼地東側の浅瀬を通行。夜間は迂回指示。",
-    risk: "毒・沼地 / 同行3名",
-    channel: "ギルドチャット / 緊急時は鐘楼",
-    slots: "3名（前衛1 / 後衛1 / 支援1）",
-  },
-};
-
 const baseApplicants = [
   {
     id: "ADV-014",
@@ -147,7 +114,8 @@ const standbyList = [
 export default function QuestSelectionPage() {
   const params = useParams();
   const questId = typeof params?.id === "string" ? params.id : params?.id?.[0];
-  const [prototypeQuest, setPrototypeQuest] = useState(null);
+  const [quest, setQuest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [applicantPage, setApplicantPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [activeList, setActiveList] = useState("applicants");
@@ -191,10 +159,26 @@ export default function QuestSelectionPage() {
   };
 
   useEffect(() => {
-    ensurePrototypeState();
-    const state = getPrototypeState();
-    const found = state.quests?.find((item) => item.id.toLowerCase() === questId) ?? null;
-    setPrototypeQuest(found);
+    if (!questId) return;
+    let active = true;
+    setIsLoading(true);
+    fetch(`/api/quests/${questId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setQuest(data.quest ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setQuest(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [questId]);
 
   useEffect(() => {
@@ -211,10 +195,42 @@ export default function QuestSelectionPage() {
     setAllPage(Math.min(Math.max(nextPage, 1), allTotalPages));
   };
 
-  const quest = useMemo(() => {
-    if (prototypeQuest) return prototypeQuest;
-    return recruitingQuests[questId] ?? recruitingQuests["qst-020"];
-  }, [prototypeQuest, questId]);
+  const activeQuest = useMemo(() => quest, [quest]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-2xl px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+              <CardDescription>クエスト詳細を取得しています。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeQuest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-2xl px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">クエストが見つかりません</CardTitle>
+              <CardDescription>募集一覧から選び直してください。</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/reception">受付コンソールへ戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -241,22 +257,22 @@ export default function QuestSelectionPage() {
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="flex items-start justify-between">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
-                <CardTitle className="text-lg text-ink">{quest.title}</CardTitle>
+                <p className="text-xs uppercase tracking-[0.28em] text-primary">{activeQuest.id}</p>
+                <CardTitle className="text-lg text-ink">{activeQuest.title}</CardTitle>
                 <CardDescription>募集中クエストの内容を確認して、選定枠を決定します。</CardDescription>
               </div>
-              <Badge variant="secondary">{quest.status}</Badge>
+              <Badge variant="secondary">{activeQuest.status}</Badge>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <InfoRow label="募集枠" value={quest.slots} />
-              <InfoRow label="報酬" value={quest.reward} />
-              <InfoRow label="ランク制限" value={quest.rank} />
-              <InfoRow label="クエスト詳細" value={quest.detail} />
-              <InfoRow label="リスク" value={quest.risk} />
-              <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
-              <InfoRow label="ギルド支給物" value={quest.supplies} />
-              <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
-              <InfoRow label="連絡方法" value={quest.channel} />
+              <InfoRow label="募集枠" value={activeQuest.slots ?? "未設定"} />
+              <InfoRow label="報酬" value={activeQuest.reward ?? "未設定"} />
+              <InfoRow label="ランク制限" value={activeQuest.rank ?? "未設定"} />
+              <InfoRow label="クエスト詳細" value={activeQuest.detail ?? "未設定"} />
+              <InfoRow label="リスク" value={activeQuest.risk ?? "未設定"} />
+              <InfoRow label="成果物 / 評価基準" value={activeQuest.deliverables ?? "未設定"} />
+              <InfoRow label="ギルド支給物" value={activeQuest.supplies ?? "未設定"} />
+              <InfoRow label="地図 / 注意事項" value={activeQuest.mapNotes ?? "未設定"} />
+              <InfoRow label="連絡方法" value={activeQuest.channel ?? "未設定"} />
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
               <Badge variant="muted">選定完了で「クエスト進行」に移動</Badge>

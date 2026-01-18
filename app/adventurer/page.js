@@ -6,14 +6,30 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { acceptQuest, ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
-
 export default function AdventurerMock() {
   const [quests, setQuests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ensurePrototypeState();
-    setQuests(getPrototypeState().quests ?? []);
+    let active = true;
+    setIsLoading(true);
+    fetch("/api/quests")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setQuests(data.quests ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setQuests([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const openQuests = useMemo(() => {
@@ -29,8 +45,20 @@ export default function AdventurerMock() {
   }, [quests]);
 
   const handleAccept = (questId) => {
-    const next = acceptQuest(questId);
-    setQuests(next.quests ?? []);
+    return fetch(`/api/quests/${questId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "accept" }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("受注に失敗しました。");
+      }
+      return fetch("/api/quests")
+        .then((nextResponse) => nextResponse.json())
+        .then((data) => {
+          setQuests(data.quests ?? []);
+        });
+    });
   };
 
   return (
@@ -51,7 +79,9 @@ export default function AdventurerMock() {
               <CardDescription>申請中・進行中・評価待ち・完了の状況をまとめて確認します。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 divide-y divide-border/80 p-0">
-              {activeQuests.length ? (
+              {isLoading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+              ) : activeQuests.length ? (
                 activeQuests.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between">
@@ -64,7 +94,7 @@ export default function AdventurerMock() {
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
-                        <Link href={`/adventurer/quests/${quest.id.toLowerCase()}`}>詳細を見る</Link>
+                        <Link href={`/adventurer/quests/${quest.id}`}>詳細を見る</Link>
                       </Button>
                       <Button size="sm" className="text-xs">
                         チャット（ダミー）
@@ -87,7 +117,9 @@ export default function AdventurerMock() {
               <CardDescription>公開済み = 募集中のクエストを一覧で確認します。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 divide-y divide-border/80 p-0">
-              {openQuests.length ? (
+              {isLoading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+              ) : openQuests.length ? (
                 openQuests.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between">
@@ -101,7 +133,7 @@ export default function AdventurerMock() {
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
-                        <Link href={`/adventurer/quests/${quest.id.toLowerCase()}`}>詳細を見る</Link>
+                        <Link href={`/adventurer/quests/${quest.id}`}>詳細を見る</Link>
                       </Button>
                       <Button size="sm" className="text-xs" onClick={() => handleAccept(quest.id)}>
                         受注する
@@ -122,7 +154,9 @@ export default function AdventurerMock() {
             <CardDescription>完了済みのクエストを一覧で確認します。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 divide-y divide-border/80 p-0">
-            {questHistory.length ? (
+            {isLoading ? (
+              <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+            ) : questHistory.length ? (
               questHistory.map((quest) => (
                 <div key={quest.id} className="space-y-1 px-4 py-3">
                   <div className="flex items-start justify-between">
@@ -135,7 +169,7 @@ export default function AdventurerMock() {
                   <p className="text-xs text-muted-foreground">{quest.summary}</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button size="sm" variant="outline" className="text-xs" asChild>
-                      <Link href={`/adventurer/quests/${quest.id.toLowerCase()}`}>履歴を見る</Link>
+                      <Link href={`/adventurer/quests/${quest.id}`}>履歴を見る</Link>
                     </Button>
                   </div>
                 </div>

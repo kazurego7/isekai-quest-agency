@@ -14,41 +14,62 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
-
-const quickLinks = [
-  { label: "依頼一覧", href: "/requests", variant: "outline" },
-  { label: "下書き調整へ", href: "/requests/reception/req-002/adjust", variant: "secondary" },
-  { label: "トップへ戻る", href: "/", variant: "ghost" },
-];
-
 export default function ReceptionPage() {
-  const [prototypeState, setPrototypeState] = useState({ requests: [], quests: [] });
+  const [requests, setRequests] = useState([]);
+  const [quests, setQuests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ensurePrototypeState();
-    setPrototypeState(getPrototypeState());
+    let active = true;
+    setIsLoading(true);
+    Promise.all([fetch("/api/requests"), fetch("/api/quests")])
+      .then(async ([requestsResponse, questsResponse]) => {
+        const requestsData = await requestsResponse.json();
+        const questsData = await questsResponse.json();
+        if (!active) return;
+        setRequests(requestsData.requests ?? []);
+        setQuests(questsData.quests ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setRequests([]);
+        setQuests([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const inAgreement = useMemo(() => {
-    return (prototypeState.requests ?? []).filter((item) =>
-      ["確認前", "合意待ち"].includes(item.status),
-    );
-  }, [prototypeState.requests]);
+    return (requests ?? []).filter((item) => ["確認前", "合意待ち"].includes(item.status));
+  }, [requests]);
 
   const questDrafts = useMemo(() => {
-    return (prototypeState.requests ?? []).filter((item) =>
-      ["合意済み", "クエスト化済み"].includes(item.status),
-    );
-  }, [prototypeState.requests]);
+    return (requests ?? []).filter((item) => ["合意済み", "クエスト化済み"].includes(item.status));
+  }, [requests]);
 
   const recruitingQuests = useMemo(() => {
-    return (prototypeState.quests ?? []).filter((item) => item.status === "募集中");
-  }, [prototypeState.quests]);
+    return (quests ?? []).filter((item) => item.status === "募集中");
+  }, [quests]);
 
   const completionReviews = useMemo(() => {
-    return (prototypeState.quests ?? []).filter((item) => item.status === "完了報告済み");
-  }, [prototypeState.quests]);
+    return (quests ?? []).filter((item) => item.status === "完了報告済み");
+  }, [quests]);
+
+  const adjustTarget = inAgreement[0]?.id;
+  const quickLinks = [
+    { label: "依頼一覧", href: "/requests", variant: "outline" },
+    {
+      label: "下書き調整へ",
+      href: adjustTarget ? `/requests/reception/${adjustTarget}/adjust` : "/requests",
+      variant: "secondary",
+    },
+    { label: "トップへ戻る", href: "/", variant: "ghost" },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
@@ -81,7 +102,9 @@ export default function ReceptionPage() {
               <CardDescription>依頼者との合意が終わっていない案件。依頼詳細を開いて対応します。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {inAgreement.length ? (
+              {isLoading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+              ) : inAgreement.length ? (
                 inAgreement.map((item) => (
                   <div key={item.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -119,7 +142,11 @@ export default function ReceptionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid flex-1 content-start grid-cols-1 gap-3 lg:grid-cols-2">
-              {questDrafts.length ? (
+              {isLoading ? (
+                <div className="rounded-lg border border-dashed border-border/60 bg-white/70 p-4 text-sm text-muted-foreground">
+                  読み込み中...
+                </div>
+              ) : questDrafts.length ? (
                 questDrafts.map((draft) => (
                   <div
                     key={draft.id}
@@ -164,7 +191,9 @@ export default function ReceptionPage() {
               <CardDescription>募集をかけているクエスト。申請順にレビューし、選定へ進みます。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {recruitingQuests.length ? (
+              {isLoading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+              ) : recruitingQuests.length ? (
                 recruitingQuests.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -178,7 +207,7 @@ export default function ReceptionPage() {
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
-                        <Link href={`/reception/quests/${quest.id.toLowerCase()}`}>選定へ</Link>
+                        <Link href={`/reception/quests/${quest.id}`}>選定へ</Link>
                       </Button>
                     </div>
                   </div>
@@ -200,7 +229,9 @@ export default function ReceptionPage() {
               <CardDescription>冒険者の完了報告を確認し、達成確認を行うキューです。</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-3 divide-y divide-border/80 p-0">
-              {completionReviews.length ? (
+              {isLoading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
+              ) : completionReviews.length ? (
                 completionReviews.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -214,7 +245,7 @@ export default function ReceptionPage() {
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
-                        <Link href={`/reception/reviews/${quest.id.toLowerCase()}`}>完了報告を確認</Link>
+                        <Link href={`/reception/reviews/${quest.id}`}>完了報告を確認</Link>
                       </Button>
                     </div>
                   </div>

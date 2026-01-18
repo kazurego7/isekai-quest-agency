@@ -8,72 +8,96 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestReviewClient from "./quest-review-client";
-import {
-  ensurePrototypeState,
-  getPrototypeState,
-  verifyQuestCompletion,
-} from "@/lib/prototype-store";
-
-const reviewCatalog = {
-  "qst-007": {
-    id: "QST-007",
-    title: "討伐 / 森の魔狼",
-    status: "評価待ち",
-    reward: "110,000G",
-    rank: "Bランク以上",
-    detail: "夜間の群れに注意。討伐後は現地で簡易報告を作成。",
-    deliverables: "討伐証明と簡易報告",
-    risk: "夜間襲撃 / 群れ",
-    supplies: "応急手当具",
-    mapNotes: "緑陰の森。夜間は視界不良。",
-    channel: "ギルドチャット",
-    slots: "2名（前衛1 / 後衛1）",
-    summary: "討伐完了報告済み。冒険者の成果を確認する。",
-    reportComment: "現地は視界が悪く、夜間は索敵が難しい状態でした。討伐証明と現地記録を添付しています。",
-    checklist: [
-      { label: "討伐証明の提出", note: "牙の提出済み", checked: true },
-      { label: "討伐地点の記録", note: "座標と地形メモあり", checked: true },
-      { label: "同行者の報告", note: "任意 / 口頭報告のみ", checked: false },
-    ],
-    photos: [
-      { id: "photo-1", label: "討伐証明（牙）", url: "/window.svg" },
-      { id: "photo-2", label: "現地記録（森）", url: "/globe.svg" },
-      { id: "photo-3", label: "同行者の報告書", url: "/file.svg" },
-    ],
-  },
-};
 
 export default function ReceptionReviewDetail() {
   const params = useParams();
   const router = useRouter();
-  const [prototypeQuest, setPrototypeQuest] = useState(null);
+  const [quest, setQuest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
 
   useEffect(() => {
-    ensurePrototypeState();
-    const state = getPrototypeState();
-    const found = state.quests?.find((item) => item.id.toLowerCase() === id);
-    setPrototypeQuest(found ?? null);
+    if (!id) return;
+    let active = true;
+    setIsLoading(true);
+    fetch(`/api/quests/${id}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setQuest(data.quest ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setQuest(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  const quest = useMemo(() => {
-    if (prototypeQuest) {
-      return {
-        ...prototypeQuest,
-        slots: prototypeQuest.slots ?? "未設定",
-        reportComment: prototypeQuest.reportComment ?? "冒険者からの報告は未入力です。",
-        checklist: prototypeQuest.checklist ?? [],
-        photos: prototypeQuest.photos ?? [],
-      };
-    }
-    return reviewCatalog[id] ?? reviewCatalog["qst-007"];
-  }, [id, prototypeQuest]);
+  const normalizedQuest = useMemo(() => {
+    if (!quest) return null;
+    return {
+      ...quest,
+      slots: quest.slots ?? "未設定",
+      reportComment: quest.reportComment ?? "冒険者からの報告は未入力です。",
+      checklist: quest.checklist ?? [],
+      photos: quest.photos ?? [],
+    };
+  }, [quest]);
 
-  const handleVerify = () => {
-    if (!quest?.id) return;
-    verifyQuestCompletion(quest.id);
-    router.push("/reception");
+  const handleVerify = (reviewNote) => {
+    if (!normalizedQuest?.id) return;
+    return fetch(`/api/quests/${normalizedQuest.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "verify", reviewNote }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("達成確認の記録に失敗しました。");
+      }
+      router.push("/reception");
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
+        <div className="mx-auto max-w-screen-lg px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+              <CardDescription>クエストの内容を取得しています。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!normalizedQuest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
+        <div className="mx-auto max-w-screen-lg px-6 pb-16 pt-10 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">クエストが見つかりません</CardTitle>
+              <CardDescription>受付コンソールから選び直してください。</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/reception">受付コンソールへ戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
@@ -97,26 +121,26 @@ export default function ReceptionReviewDetail() {
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
-                <CardTitle className="text-lg text-ink">{quest.title}</CardTitle>
-                <CardDescription>{quest.summary}</CardDescription>
+                <p className="text-xs uppercase tracking-[0.28em] text-primary">{normalizedQuest.id}</p>
+                <CardTitle className="text-lg text-ink">{normalizedQuest.title}</CardTitle>
+                <CardDescription>{normalizedQuest.summary}</CardDescription>
               </div>
-              <Badge variant="secondary">{quest.status}</Badge>
+              <Badge variant="secondary">{normalizedQuest.status}</Badge>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <InfoRow label="募集枠" value={quest.slots} />
-              <InfoRow label="報酬" value={quest.reward} />
-              <InfoRow label="ランク制限" value={quest.rank} />
-              <InfoRow label="クエスト詳細" value={quest.detail} />
-              <InfoRow label="リスク" value={quest.risk} />
-              <InfoRow label="成果物 / 評価基準" value={quest.deliverables} />
-              <InfoRow label="ギルド支給物" value={quest.supplies} />
-              <InfoRow label="地図 / 注意事項" value={quest.mapNotes} />
-              <InfoRow label="連絡方法" value={quest.channel} />
+              <InfoRow label="募集枠" value={normalizedQuest.slots} />
+              <InfoRow label="報酬" value={normalizedQuest.reward ?? "未設定"} />
+              <InfoRow label="ランク制限" value={normalizedQuest.rank ?? "未設定"} />
+              <InfoRow label="クエスト詳細" value={normalizedQuest.detail ?? "未設定"} />
+              <InfoRow label="リスク" value={normalizedQuest.risk ?? "未設定"} />
+              <InfoRow label="成果物 / 評価基準" value={normalizedQuest.deliverables ?? "未設定"} />
+              <InfoRow label="ギルド支給物" value={normalizedQuest.supplies ?? "未設定"} />
+              <InfoRow label="地図 / 注意事項" value={normalizedQuest.mapNotes ?? "未設定"} />
+              <InfoRow label="連絡方法" value={normalizedQuest.channel ?? "未設定"} />
             </CardContent>
           </Card>
 
-          <QuestReviewClient quest={quest} onVerify={handleVerify} />
+          <QuestReviewClient quest={normalizedQuest} onVerify={handleVerify} />
         </section>
       </div>
     </div>
