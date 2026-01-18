@@ -13,8 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { ensurePrototypeState, getPrototypeState } from "@/lib/prototype-store";
-
 const statusStyle = {
   合意待ち: "default",
   確認前: "secondary",
@@ -27,16 +25,32 @@ const statusStyle = {
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ensurePrototypeState();
-    setRequests(getPrototypeState().requests ?? []);
+    let active = true;
+    setIsLoading(true);
+    fetch("/api/requests")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setRequests(data.requests ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setRequests([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const sortedRequests = useMemo(() => {
     return [...requests].sort((a, b) => {
-      if (a.createdAt === "seed") return 1;
-      if (b.createdAt === "seed") return -1;
       return String(b.createdAt).localeCompare(String(a.createdAt));
     });
   }, [requests]);
@@ -55,7 +69,14 @@ export default function RequestsPage() {
         </header>
 
         <div className="space-y-3">
-          {sortedRequests.length ? (
+          {isLoading ? (
+            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+                <CardDescription>依頼一覧を取得しています。</CardDescription>
+              </CardHeader>
+            </Card>
+          ) : sortedRequests.length ? (
             sortedRequests.map((req) => (
               <Card key={req.id} className="border border-border/70 bg-white/90 shadow-sm">
                 <CardHeader className="space-y-1">

@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../../confirm-action-button";
-import { ensurePrototypeState, getPrototypeState, updateRequestAdjustment } from "@/lib/prototype-store";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -26,80 +25,25 @@ const fieldOrder = [
   "備考",
 ];
 
-const adjustDrafts = {
-  "req-001": {
-    title: "護衛 / 商隊の街道移動",
-    before: {
-      "依頼タイトル": "護衛 / 商隊の街道移動",
-      "目的・背景": "商隊を西の街まで護衛する",
-      "場所": "森を抜ける街道 / 合流地点あり",
-      "完了期限": "今週末までに完了",
-      "危険度・同行条件": "同行2名、夜間警戒を希望",
-      "報酬上限額": "90,000G",
-      備考: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
-    },
-    suggested: {
-      "依頼タイトル": "護衛 / 商隊の街道移動",
-      "目的・背景": "商隊を西の街まで護衛する",
-      "場所": "森の入口の宿場町に変更",
-      "完了期限": "5日以内に変更",
-      "危険度・同行条件": "同行2名、夜間警戒を希望",
-      "報酬上限額": "90,000G",
-      備考: "宿場町で合流することで安全性を確保",
-    },
-    reason: "夜間の安全確保と人員調整のため",
-  },
-  "req-002": {
-    title: "討伐 / 湿地帯の魔蛇",
-    before: {
-      "依頼タイトル": "討伐 / 湿地帯の魔蛇",
-      "目的・背景": "湿地帯に出現する魔蛇の討伐",
-      "場所": "南方の湿地帯",
-      "完了期限": "緊急 / 3日以内に対応希望",
-      "危険度・同行条件": "同行3名、毒への耐性装備必須",
-      "報酬上限額": "90,000G",
-      備考: "沼地入口で合流予定",
-    },
-    suggested: {
-      "依頼タイトル": "討伐 / 湿地帯の魔蛇",
-      "目的・背景": "湿地帯に出現する魔蛇の討伐",
-      "場所": "南方の湿地帯",
-      "完了期限": "緊急 / 3日以内に対応希望",
-      "危険度・同行条件": "同行3名、毒への耐性装備必須",
-      "報酬上限額": "120,000G",
-      備考: "沼地入口で合流予定",
-    },
-    reason: "危険度が高いエリアのため",
-  },
-  "req-003": {
-    title: "採取 / 氷花の採取",
-    before: {
-      "依頼タイトル": "採取 / 氷花の採取",
-      "目的・背景": "魔導薬の原料となる氷花の採取",
-      "場所": "北方の山岳地帯 / 標高2,000m付近",
-      "完了期限": "来週末までに納品",
-      "危険度・同行条件": "同行1名、寒冷地装備必須",
-      "報酬上限額": "60,000G",
-      備考: "天候によっては納期延長あり",
-    },
-    suggested: {
-      "依頼タイトル": "採取 / 氷花の採取",
-      "目的・背景": "魔導薬の原料となる氷花の採取",
-      "場所": "標高1,800mの尾根に変更",
-      "完了期限": "10日以内に変更",
-      "危険度・同行条件": "同行1名、寒冷地装備必須",
-      "報酬上限額": "60,000G",
-      備考: "天候悪化の可能性を考慮",
-    },
-    reason: "天候悪化の可能性を考慮",
-  },
+const emptyDraft = {
+  title: "依頼が見つかりません",
+  before: fieldOrder.reduce((acc, key) => {
+    acc[key] = "";
+    return acc;
+  }, {}),
+  suggested: fieldOrder.reduce((acc, key) => {
+    acc[key] = "";
+    return acc;
+  }, {}),
+  reason: "調整内容が取得できませんでした。",
 };
 
 export default function AdjustPage() {
   const params = useParams();
   const router = useRouter();
   const requestId = typeof params?.id === "string" ? params.id : params?.id?.[0];
-  const [prototypeRequest, setPrototypeRequest] = useState(null);
+  const [currentRequest, setCurrentRequest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const role =
     params?.role === "reception" ? "reception" : params?.role === "requester" ? "requester" : null;
   const isRoleValid = Boolean(role);
@@ -107,26 +51,42 @@ export default function AdjustPage() {
   const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
 
   useEffect(() => {
-    ensurePrototypeState();
-    const state = getPrototypeState();
-    const found = state.requests?.find((item) => item.id === requestId) ?? null;
-    setPrototypeRequest(found);
+    if (!requestId) return;
+    let active = true;
+    setIsLoading(true);
+    fetch(`/api/requests/${requestId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setCurrentRequest(data.request ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCurrentRequest(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [requestId]);
 
+  const [suggestedFields, setSuggestedFields] = useState(() => emptyDraft.suggested);
+  const [reason, setReason] = useState(emptyDraft.reason);
+
   const draft = useMemo(() => {
-    if (prototypeRequest) {
+    if (currentRequest) {
       return {
-        title: prototypeRequest.title,
-        before: prototypeRequest.fields,
-        suggested: prototypeRequest.fields,
+        title: currentRequest.title,
+        before: currentRequest.fields ?? {},
+        suggested: currentRequest.fields ?? {},
         reason: "調整の理由を記載",
       };
     }
-    return adjustDrafts[requestId] ?? adjustDrafts["req-001"];
-  }, [prototypeRequest, requestId]);
-
-  const [suggestedFields, setSuggestedFields] = useState(() => draft.suggested);
-  const [reason, setReason] = useState(draft.reason);
+    return emptyDraft;
+  }, [currentRequest]);
 
   useEffect(() => {
     setSuggestedFields(draft.suggested);
@@ -134,21 +94,18 @@ export default function AdjustPage() {
   }, [draft]);
 
   const inferredAgreement = useMemo(() => {
-    if (prototypeRequest?.agreement) return prototypeRequest.agreement;
-    if (prototypeRequest?.status === "確認前") {
-      return { requesterAgreed: true, receptionistAgreed: false };
+    if (!currentRequest) {
+      return { requesterAgreed: false, receptionistAgreed: false };
     }
-    if (prototypeRequest?.status === "合意待ち") {
-      return roleForLinks === "reception"
-        ? { requesterAgreed: true, receptionistAgreed: false }
-        : { requesterAgreed: false, receptionistAgreed: true };
-    }
-    return { requesterAgreed: false, receptionistAgreed: false };
-  }, [prototypeRequest, roleForLinks]);
+    return {
+      requesterAgreed: Boolean(currentRequest.requesterAgreed),
+      receptionistAgreed: Boolean(currentRequest.receptionistAgreed),
+    };
+  }, [currentRequest]);
 
   const isLocked =
     roleForLinks === "reception" ? inferredAgreement.receptionistAgreed : inferredAgreement.requesterAgreed;
-  const canSubmit = Boolean(prototypeRequest) && !isLocked && isRoleValid;
+  const canSubmit = Boolean(currentRequest) && !isLocked && isRoleValid;
 
   const handleFieldChange = (label, value) => {
     setSuggestedFields((prev) => ({ ...prev, [label]: value }));
@@ -156,9 +113,57 @@ export default function AdjustPage() {
 
   const handleSubmit = () => {
     if (!requestId || !canSubmit) return;
-    updateRequestAdjustment(requestId, suggestedFields, reason, roleForLinks);
-    router.push(`/requests/${roleForLinks}/${requestId}`);
+    return fetch(`/api/requests/${requestId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "adjust",
+        actorRole: roleForLinks,
+        fields: suggestedFields,
+        reason,
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("調整の送信に失敗しました。");
+      }
+      router.push(`/requests/${roleForLinks}/${requestId}`);
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+              <CardDescription>依頼の調整内容を取得しています。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentRequest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">依頼が見つかりません</CardTitle>
+              <CardDescription>一覧から依頼を選び直してください。</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button variant="outline" asChild>
+                <Link href="/requests">一覧へ戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">

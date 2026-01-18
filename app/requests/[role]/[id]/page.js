@@ -15,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../confirm-action-button";
-import { ensurePrototypeState, getPrototypeState, updateRequestAgreement } from "@/lib/prototype-store";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -26,79 +25,6 @@ const fieldOrder = [
   "報酬上限額",
   "備考",
 ];
-
-const mockRequests = {
-  "req-001": {
-    title: "護衛 / 商隊の街道移動",
-    status: "合意待ち",
-    fields: {
-      "依頼タイトル": "護衛 / 商隊の街道移動",
-      "目的・背景": "商隊を西の街まで護衛する",
-      "場所": "森を抜ける街道 / 合流地点あり",
-      "完了期限": "今週末までに完了",
-      "危険度・同行条件": "同行2名、夜間警戒を希望",
-      "報酬上限額": "90,000G",
-      備考: "追加の合流地点を共有予定。夜間の休憩地点も確認中。",
-    },
-    notes: "受付へ送信済み。受付嬢の合意を待っています。相談・再調整が必要なら連絡してください。",
-  },
-  "req-002": {
-    title: "討伐 / 湿地帯の魔蛇",
-    status: "確認前",
-    fields: {
-      "依頼タイトル": "討伐 / 湿地帯の魔蛇",
-      "目的・背景": "湿地帯に出現する魔蛇の討伐",
-      "場所": "南方の湿地帯",
-      "完了期限": "緊急 / 3日以内に対応希望",
-      "危険度・同行条件": "同行3名、毒への耐性装備必須",
-      "報酬上限額": "120,000G",
-      備考: "依頼者から調整案が届いています。受付嬢が合意すると受注されます。",
-    },
-    notes: "受付嬢から調整案が届きました。内容を確認し、合意または再調整を返信してください。",
-  },
-  "req-003": {
-    title: "採取 / 氷花の採取",
-    status: "下書き",
-    fields: {
-      "依頼タイトル": "採取 / 氷花の採取",
-      "目的・背景": "魔導薬の原料となる氷花の採取",
-      "場所": "北方の山岳地帯 / 標高2,000m付近",
-      "完了期限": "来週末までに納品",
-      "危険度・同行条件": "同行1名、寒冷地装備必須",
-      "報酬上限額": "60,000G",
-      備考: "受付への送信前です。送信すると合意ラリーが始まります。",
-    },
-    notes: "送信して合意ラリーを開始してください。",
-  },
-  "req-004": {
-    title: "討伐 / 森の魔狼",
-    status: "受注済み",
-    fields: {
-      "依頼タイトル": "討伐 / 森の魔狼",
-      "目的・背景": "森の魔狼の討伐",
-      "場所": "北の森 / 周辺の村",
-      "完了期限": "完了済み",
-      "危険度・同行条件": "同行2名、夜間行動あり",
-      "報酬上限額": "150,000G",
-      備考: "両者合意済みのため受注済み。以降は進捗・納品フェーズ。",
-    },
-    notes: "参照のみ可能です。",
-  },
-  "req-005": {
-    title: "護衛 / 貴族の街道行軍",
-    status: "完了",
-    fields: {
-      "依頼タイトル": "護衛 / 貴族の街道行軍",
-      "目的・背景": "貴族一行の安全な移動と警護",
-      "場所": "王都から東の街道沿い",
-      "完了期限": "完了済み",
-      "危険度・同行条件": "同行3名、夜間行軍あり",
-      "報酬上限額": "200,000G",
-      備考: "完了した依頼の履歴です。",
-    },
-    notes: "完了済みのため参照のみです。",
-  },
-};
 
 const statusStyle = {
   合意待ち: "default",
@@ -133,7 +59,8 @@ function actionsByStatus(status) {
 export default function RequestDetail() {
   const params = useParams();
   const router = useRouter();
-  const [prototypeRequest, setPrototypeRequest] = useState(null);
+  const [currentRequest, setCurrentRequest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const id = typeof params?.id === "string" ? params.id : params?.id?.[0] ?? "";
   const role =
     params?.role === "reception" ? "reception" : params?.role === "requester" ? "requester" : null;
@@ -142,51 +69,67 @@ export default function RequestDetail() {
   const listHref = role === "reception" ? "/reception" : "/requests";
 
   useEffect(() => {
-    ensurePrototypeState();
-    const state = getPrototypeState();
-    const found = state.requests?.find((item) => item.id === id);
-    setPrototypeRequest(found ?? null);
+    if (!id) return;
+    let active = true;
+    setIsLoading(true);
+    fetch(`/api/requests/${id}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setCurrentRequest(data.request ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCurrentRequest(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  const request = useMemo(() => {
-    if (prototypeRequest) return prototypeRequest;
-    return mockRequests[id] ?? mockRequests["req-001"];
-  }, [id, prototypeRequest]);
+  const request = useMemo(() => currentRequest, [currentRequest]);
 
-  const agreement = useMemo(() => {
-    if (prototypeRequest?.agreement) return prototypeRequest.agreement;
-    if (request.status === "確認前") {
-      return { requesterAgreed: true, receptionistAgreed: false };
-    }
-    if (request.status === "合意待ち") {
-      return roleForLinks === "reception"
-        ? { requesterAgreed: true, receptionistAgreed: false }
-        : { requesterAgreed: false, receptionistAgreed: true };
-    }
-    return { requesterAgreed: false, receptionistAgreed: false };
-  }, [prototypeRequest, request.status, roleForLinks]);
+  const agreement = useMemo(
+    () => ({
+      requesterAgreed: Boolean(request?.requesterAgreed),
+      receptionistAgreed: Boolean(request?.receptionistAgreed),
+    }),
+    [request?.requesterAgreed, request?.receptionistAgreed],
+  );
 
   const selfAgreed =
     roleForLinks === "reception" ? agreement.receptionistAgreed : agreement.requesterAgreed;
   const otherAgreed =
     roleForLinks === "reception" ? agreement.requesterAgreed : agreement.receptionistAgreed;
-  const canAgree = isRoleValid && ["確認前", "合意待ち"].includes(request.status) && !selfAgreed;
+  const status = request?.status ?? "";
+  const canAgree = isRoleValid && ["確認前", "合意待ち"].includes(status) && !selfAgreed;
   const canAdjust = useMemo(() => {
     if (!isRoleValid) return false;
-    if (request.status !== "確認前" && request.status !== "合意待ち") return false;
+    if (status !== "確認前" && status !== "合意待ち") return false;
     return otherAgreed && !selfAgreed;
-  }, [isRoleValid, otherAgreed, request.status, selfAgreed]);
+  }, [isRoleValid, otherAgreed, selfAgreed, status]);
   const canShowActions = isRoleValid && !canAgree && !canAdjust;
 
-  const handleAgree = () => {
-    if (!prototypeRequest || !isRoleValid) {
+  const handleAgree = async () => {
+    if (!currentRequest || !isRoleValid) {
       router.push(listHref);
       return;
     }
-    updateRequestAgreement(request.id, roleForLinks);
+    const response = await fetch(`/api/requests/${request.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "agree", actorRole: roleForLinks }),
+    });
+    if (!response.ok) {
+      return;
+    }
     router.push(listHref);
   };
-  const isDraft = request.status === "下書き";
+  const isDraft = status === "下書き";
   const draftActions = [
     {
       label: "送信（ダミー）",
@@ -199,6 +142,41 @@ export default function RequestDetail() {
     },
     { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary", requireConfirm: false },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+              <CardDescription>依頼の詳細を取得しています。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!request) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+        <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+          <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base text-ink">依頼が見つかりません</CardTitle>
+              <CardDescription>一覧から依頼を選び直してください。</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button variant="outline" asChild>
+                <Link href={listHref}>一覧へ戻る</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -282,7 +260,7 @@ export default function RequestDetail() {
                 <CardTitle className="text-xl text-ink">{request.title}</CardTitle>
                 <Badge variant={statusStyle[request.status] ?? "muted"}>{request.status}</Badge>
               </div>
-              <CardDescription>{request.notes}</CardDescription>
+              <CardDescription>{request.notes ?? "詳細がまだ登録されていません。"}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 gap-3">
@@ -292,7 +270,7 @@ export default function RequestDetail() {
                     className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-3 text-sm"
                   >
                     <span className="text-muted-foreground">{label}</span>
-                    <span className="text-ink">{request.fields[label]}</span>
+                    <span className="text-ink">{request?.fields?.[label] ?? "未入力"}</span>
                   </div>
                 ))}
               </div>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import ConfirmActionButton from "../confirm-action-button";
-import { createRequest } from "@/lib/prototype-store";
+import { useRouter } from "next/navigation";
 
 const fields = [
   { label: "依頼タイトル", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
@@ -18,6 +18,7 @@ const fields = [
 ];
 
 export default function NewRequestPage() {
+  const router = useRouter();
   const [formState, setFormState] = useState(() =>
     fields.reduce((acc, field) => {
       acc[field.label] = "";
@@ -35,9 +36,18 @@ export default function NewRequestPage() {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    createRequest({
-      title: formState["依頼タイトル"],
-      fields: formState,
+    return fetch("/api/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: formState["依頼タイトル"],
+        fields: formState,
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("依頼の作成に失敗しました。");
+      }
+      router.refresh();
     });
   };
 

@@ -36,10 +36,10 @@ export default function ConfirmActionButton({
     setOpen(false);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setOpen(false);
     if (onConfirm) {
-      onConfirm();
+      await onConfirm();
     }
     router.push(href);
   };

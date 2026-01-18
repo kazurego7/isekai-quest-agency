@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:18
+    container_name: isekai-quest-agency-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: isekai_quest_agency
+    volumes:
+      - db_data:/var/lib/postgresql
+
+volumes:
+  db_data:
