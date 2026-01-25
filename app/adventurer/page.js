@@ -6,9 +6,13 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 export default function AdventurerMock() {
   const [quests, setQuests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useDevUser("adventurer");
+  const hasActor = Boolean(user?.id);
 
   useEffect(() => {
     let active = true;
@@ -45,10 +49,11 @@ export default function AdventurerMock() {
   }, [quests]);
 
   const handleAccept = (questId) => {
+    if (!user?.id) return Promise.resolve();
     return fetch(`/api/quests/${questId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "accept" }),
+      body: JSON.stringify({ mode: "accept", actorId: user?.id }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("受注に失敗しました。");
@@ -72,6 +77,12 @@ export default function AdventurerMock() {
           </p>
         </header>
 
+        <DevUserSelector
+          role="adventurer"
+          roleLabel="冒険者"
+          helperText="開発用ユーザーを選択すると受注・報告の記録に使われます。"
+        />
+
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
@@ -84,19 +95,22 @@ export default function AdventurerMock() {
               ) : activeQuests.length ? (
                 activeQuests.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
-                        <p className="text-sm font-semibold text-ink">{quest.title}</p>
-                      </div>
-                      <Badge variant="muted">{quest.status}</Badge>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
+                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{quest.summary}</p>
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <Badge variant="muted">{quest.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                  <p className="text-xs text-muted-foreground">
+                    受付: {quest.receptionistName ?? "未設定"} / 冒険者: {quest.adventurerName ?? "未設定"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
                         <Link href={`/adventurer/quests/${quest.id}`}>詳細を見る</Link>
                       </Button>
-                      <Button size="sm" className="text-xs">
+                      <Button size="sm" className="text-xs" disabled={!hasActor}>
                         チャット（ダミー）
                       </Button>
                     </div>
@@ -122,20 +136,28 @@ export default function AdventurerMock() {
               ) : openQuests.length ? (
                 openQuests.map((quest) => (
                   <div key={quest.id} className="space-y-1 px-4 py-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
-                        <p className="text-sm font-semibold text-ink">{quest.title}</p>
-                        <p className="text-xs text-muted-foreground">報酬: {quest.reward}</p>
-                      </div>
-                      <Badge variant="muted">{quest.status}</Badge>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.28em] text-primary">{quest.id}</p>
+                      <p className="text-sm font-semibold text-ink">{quest.title}</p>
+                      <p className="text-xs text-muted-foreground">報酬: {quest.reward}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{quest.summary}</p>
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <Badge variant="muted">{quest.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                  <p className="text-xs text-muted-foreground">
+                    受付: {quest.receptionistName ?? "未設定"} / 冒険者: {quest.adventurerName ?? "未設定"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
                         <Link href={`/adventurer/quests/${quest.id}`}>詳細を見る</Link>
                       </Button>
-                      <Button size="sm" className="text-xs" onClick={() => handleAccept(quest.id)}>
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => handleAccept(quest.id)}
+                        disabled={!hasActor}
+                      >
                         受注する
                       </Button>
                     </div>
@@ -167,6 +189,9 @@ export default function AdventurerMock() {
                     <Badge variant="muted">完了</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                  <p className="text-xs text-muted-foreground">
+                    受付: {quest.receptionistName ?? "未設定"} / 冒険者: {quest.adventurerName ?? "未設定"}
+                  </p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button size="sm" variant="outline" className="text-xs" asChild>
                       <Link href={`/adventurer/quests/${quest.id}`}>履歴を見る</Link>

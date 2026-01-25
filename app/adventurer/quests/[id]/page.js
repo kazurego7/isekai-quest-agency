@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestDetailClient from "./quest-detail-client";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 export default function AdventurerQuestDetail() {
   const params = useParams();
@@ -15,6 +17,8 @@ export default function AdventurerQuestDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
+  const { user } = useDevUser("adventurer");
+  const hasActor = Boolean(user?.id);
 
   useEffect(() => {
     if (!id) return;
@@ -60,11 +64,11 @@ export default function AdventurerQuestDetail() {
   }, [quest]);
 
   const handleAccept = () => {
-    if (!normalizedQuest?.id) return;
+    if (!normalizedQuest?.id || !user?.id) return;
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "accept" }),
+      body: JSON.stringify({ mode: "accept", actorId: user?.id }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("受注に失敗しました。");
@@ -74,12 +78,13 @@ export default function AdventurerQuestDetail() {
   };
 
   const handleComplete = (reportComment) => {
-    if (!normalizedQuest?.id) return;
+    if (!normalizedQuest?.id || !user?.id) return;
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "report",
+        actorId: user?.id,
         reportComment: reportComment?.comment ?? reportComment ?? "",
         checklist: reportComment?.checklist ?? [],
         photos: reportComment?.photos ?? [],
@@ -141,6 +146,12 @@ export default function AdventurerQuestDetail() {
           </Button>
         </header>
 
+        <DevUserSelector
+          role="adventurer"
+          roleLabel="冒険者"
+          helperText="開発用ユーザーを選択すると報告や受注が可能になります。"
+        />
+
         <Card className="border-primary/15 bg-white/90 shadow-sm">
           <CardHeader className="flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -151,6 +162,8 @@ export default function AdventurerQuestDetail() {
             <Badge variant="secondary">{normalizedQuest.status}</Badge>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <InfoRow label="受付" value={normalizedQuest.receptionistName ?? "未設定"} />
+            <InfoRow label="冒険者" value={normalizedQuest.adventurerName ?? "未設定"} />
             <InfoRow label="募集枠" value={normalizedQuest.slots} />
             <InfoRow label="報酬" value={normalizedQuest.reward} />
             <InfoRow label="ランク制限" value={normalizedQuest.rank} />
@@ -163,7 +176,7 @@ export default function AdventurerQuestDetail() {
           </CardContent>
           {normalizedQuest.status === "募集中" ? (
             <CardFooter className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={handleAccept}>
+              <Button size="sm" onClick={handleAccept} disabled={!hasActor}>
                 受注する
               </Button>
             </CardFooter>

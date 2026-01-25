@@ -12,6 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 const statusStyle = {
   合意待ち: "default",
@@ -26,11 +28,17 @@ const statusStyle = {
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useDevUser("requester");
 
   useEffect(() => {
+    if (!user?.id) {
+      setRequests([]);
+      setIsLoading(false);
+      return;
+    }
     let active = true;
     setIsLoading(true);
-    fetch("/api/requests")
+    fetch(`/api/requests?requesterId=${encodeURIComponent(user.id)}`)
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
@@ -47,7 +55,7 @@ export default function RequestsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user]);
 
   const sortedRequests = useMemo(() => {
     return [...requests].sort((a, b) => {
@@ -68,12 +76,25 @@ export default function RequestsPage() {
           </Button>
         </header>
 
+        <DevUserSelector
+          role="requester"
+          roleLabel="依頼者"
+          helperText="開発用ユーザーを選択すると自分の依頼だけが表示されます。"
+        />
+
         <div className="space-y-3">
           {isLoading ? (
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
                 <CardDescription>依頼一覧を取得しています。</CardDescription>
+              </CardHeader>
+            </Card>
+          ) : !user?.id ? (
+            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
+                <CardDescription>上の開発用ログインでユーザーを選ぶと、自分の依頼だけが表示されます。</CardDescription>
               </CardHeader>
             </Card>
           ) : sortedRequests.length ? (
@@ -85,6 +106,7 @@ export default function RequestsPage() {
                     <Badge variant={statusStyle[req.status] ?? "muted"}>{req.status}</Badge>
                   </div>
                   <CardDescription>{req.summary ?? req.notes}</CardDescription>
+                  <p className="text-xs text-muted-foreground">依頼者: {req.requesterName ?? "未設定"}</p>
                 </CardHeader>
                 <CardFooter className="flex flex-wrap gap-2">
                   <Button variant="ghost" size="sm" asChild className="ml-auto">

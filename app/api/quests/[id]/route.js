@@ -24,14 +24,21 @@ export async function PATCH(request, context) {
 
   const payload = await request.json();
   const mode = payload.mode;
+  const actorId = String(payload.actorId || "").trim();
+  const actor = actorId ? await prisma.user.findUnique({ where: { id: actorId } }) : null;
 
   if (mode === "accept") {
+    if (!actor || actor.role !== "adventurer") {
+      return NextResponse.json({ error: "冒険者が不正です。" }, { status: 400 });
+    }
     const updated = await prisma.$transaction(async (tx) => {
       const quest = await tx.quest.update({
         where: { id },
         data: {
           status: "受注済み",
           summary: "冒険者が受注しました。進行状況の更新を待っています。",
+          adventurerName: actor.name,
+          adventurerId: actor.id,
         },
       });
 
@@ -52,6 +59,9 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "report") {
+    if (!actor || actor.role !== "adventurer") {
+      return NextResponse.json({ error: "冒険者が不正です。" }, { status: 400 });
+    }
     const reportComment = payload.reportComment ?? "";
     const checklist = payload.checklist ?? [];
     const photos = payload.photos ?? [];
@@ -64,6 +74,8 @@ export async function PATCH(request, context) {
         reportComment,
         checklist,
         photos,
+        adventurerName: actor.name,
+        adventurerId: actor.id,
       },
     });
 
@@ -71,6 +83,9 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "verify") {
+    if (!actor || actor.role !== "reception") {
+      return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
+    }
     const reviewNote = payload.reviewNote ?? null;
     const updated = await prisma.$transaction(async (tx) => {
       const quest = await tx.quest.update({
@@ -79,6 +94,8 @@ export async function PATCH(request, context) {
           status: "達成確認済み",
           summary: "受付の達成確認が完了。履歴に保存。",
           reviewNote,
+          receptionistName: actor.name,
+          receptionistId: actor.id,
         },
       });
 
@@ -93,6 +110,28 @@ export async function PATCH(request, context) {
       }
 
       return quest;
+    });
+
+    return NextResponse.json({ quest: updated });
+  }
+
+  if (mode === "select") {
+    const selectedIds = Array.isArray(payload.selectedIds) ? payload.selectedIds : null;
+    if (!selectedIds) {
+      return NextResponse.json({ error: "選定内容が不正です。" }, { status: 400 });
+    }
+    if (!actor || actor.role !== "reception") {
+      return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
+    }
+
+    const updated = await prisma.quest.update({
+      where: { id },
+      data: {
+        selectedAdventurers: selectedIds,
+        receptionistName: actor.name,
+        receptionistId: actor.id,
+        summary: "受付が冒険者を選定中です。",
+      },
     });
 
     return NextResponse.json({ quest: updated });

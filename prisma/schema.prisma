@@ -12,6 +12,10 @@ model Quest {
   requestId    String?
   title        String
   status       String
+  receptionistName String?
+  adventurerName String?
+  receptionistId String?
+  adventurerId   String?
   reward       String?
   rank         String?
   detail       String?
@@ -26,16 +30,49 @@ model Quest {
   reviewNote   String?
   checklist    Json?
   photos       Json?
+  selectedAdventurers Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   request      Request? @relation(fields: [requestId], references: [id])
+  receptionist User?    @relation("ReceptionistQuest", fields: [receptionistId], references: [id])
+  adventurer   User?    @relation("AdventurerQuest", fields: [adventurerId], references: [id])
+}
+
+model Adventurer {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  rank      String
+  role      String
+  note      String?
+  source    String
+  appliedAt String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(uuid())
+  role      String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requesterRequests  Request[] @relation("RequesterRequests")
+  receptionistRequests Request[] @relation("ReceptionistRequests")
+  receptionistQuests Quest[] @relation("ReceptionistQuest")
+  adventurerQuests   Quest[] @relation("AdventurerQuest")
 }
 
 model Request {
   id                String   @id @default(uuid())
   title             String
   status            String
+  requesterName     String?
+  receptionistName  String?
+  requesterId       String?
+  receptionistId    String?
   fields            Json
   notes             String?
   summary           String?
@@ -45,4 +82,6 @@ model Request {
   updatedAt         DateTime @updatedAt
 
   quests            Quest[]
+  requester         User?    @relation("RequesterRequests", fields: [requesterId], references: [id])
+  receptionist      User?    @relation("ReceptionistRequests", fields: [receptionistId], references: [id])
 }

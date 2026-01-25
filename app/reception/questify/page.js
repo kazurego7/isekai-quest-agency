@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 const publishFieldLabels = [
   { key: "rank", label: "冒険者ランク制限", placeholder: "Bランク以上" },
   { key: "slots", label: "募集人数・役割", placeholder: "3名（前衛1 / 後衛1 / 支援1）" },
@@ -23,6 +25,7 @@ export default function QuestifyPage() {
   const requestId = searchParams.get("requestId");
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useDevUser("reception");
   const [publishFields, setPublishFields] = useState(() =>
     publishFieldLabels.reduce((acc, field) => {
       acc[field.key] = "";
@@ -54,8 +57,8 @@ export default function QuestifyPage() {
   }, [requestId]);
 
   const canPublish = useMemo(() => {
-    return request?.status === "合意済み";
-  }, [request]);
+    return request?.status === "合意済み" && Boolean(user?.id);
+  }, [request, user]);
 
   const handleFieldChange = (key, value) => {
     setPublishFields((prev) => ({ ...prev, [key]: value }));
@@ -66,7 +69,7 @@ export default function QuestifyPage() {
     return fetch("/api/quests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, publishFields }),
+      body: JSON.stringify({ requestId, publishFields, actorId: user?.id }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("クエスト化に失敗しました。");
@@ -126,6 +129,12 @@ export default function QuestifyPage() {
           </Button>
         </header>
 
+        <DevUserSelector
+          role="reception"
+          roleLabel="受付"
+          helperText="開発用ユーザーを選択するとクエスト化が可能になります。"
+        />
+
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader>
@@ -139,6 +148,10 @@ export default function QuestifyPage() {
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-2 text-sm">
+              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground">依頼者</span>
+                <span className="text-ink text-right">{request.requesterName ?? "未設定"}</span>
+              </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">依頼タイトル</span>
                 <span className="text-ink text-right">{request.fields?.["依頼タイトル"] ?? "-"}</span>

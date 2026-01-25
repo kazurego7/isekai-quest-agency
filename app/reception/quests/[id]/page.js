@@ -7,115 +7,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-const baseApplicants = [
-  {
-    id: "ADV-014",
-    name: "レン・ハドリック",
-    rank: "Cランク",
-    role: "盾役",
-    appliedAt: "今朝 09:12",
-    note: "街道護衛経験あり。馬の扱いも可。",
-    source: "申請",
-  },
-  {
-    id: "ADV-008",
-    name: "ミオ・サザーランド",
-    rank: "Cランク",
-    role: "斥候",
-    appliedAt: "今朝 09:18",
-    note: "夜間警戒の実績あり。静音移動が得意。",
-    source: "申請",
-  },
-  {
-    id: "ADV-021",
-    name: "ダン・フォード",
-    rank: "Dランク",
-    role: "支援",
-    appliedAt: "今朝 09:35",
-    note: "護衛は初参加。補給・索敵を希望。",
-    source: "申請",
-  },
-  {
-    id: "ADV-003",
-    name: "エルネ・ミード",
-    rank: "Bランク",
-    role: "槍士",
-    appliedAt: "今朝 09:40",
-    note: "高ランク枠。指揮を担える。",
-    source: "申請",
-  },
-];
-
-const baseStandby = [
-  {
-    id: "ADV-011",
-    name: "アラン・ベイル",
-    rank: "Cランク",
-    role: "回復",
-    note: "申請なし。ギルド推薦枠。",
-    source: "推薦",
-  },
-  {
-    id: "ADV-019",
-    name: "スイ・カナリス",
-    rank: "Bランク",
-    role: "剣士",
-    note: "申請なし。前回実績が良好。",
-    source: "推薦",
-  },
-  {
-    id: "ADV-002",
-    name: "ヨナ・ホークス",
-    rank: "Cランク",
-    role: "弓手",
-    note: "申請なし。護衛の後衛支援に適任。",
-    source: "推薦",
-  },
-];
-
-const TOTAL_ADVENTURERS = 100;
-const APPLICANT_TARGET = 10;
-const STANDBY_TARGET = TOTAL_ADVENTURERS - APPLICANT_TARGET;
-
-const rankCycle = ["Dランク", "Cランク", "Bランク", "Aランク"];
-const roleCycle = ["前衛", "後衛", "支援", "盾役", "回復", "斥候", "弓手", "魔導"];
-
-const applicantList = [
-  ...baseApplicants,
-  ...Array.from({ length: Math.max(APPLICANT_TARGET - baseApplicants.length, 0) }, (_, index) => {
-    const seq = baseApplicants.length + index + 1;
-    return {
-      id: `ADV-${String(100 + seq).slice(-3)}`,
-      name: `候補冒険者${String(seq).padStart(2, "0")}`,
-      rank: rankCycle[seq % rankCycle.length],
-      role: roleCycle[seq % roleCycle.length],
-      appliedAt: `今朝 09:${String(12 + index).padStart(2, "0")}`,
-      note: "申請内容は簡易フォーム提出（ダミー）",
-      source: "申請",
-    };
-  }),
-].slice(0, APPLICANT_TARGET);
-
-const standbyList = [
-  ...baseStandby,
-  ...Array.from({ length: Math.max(STANDBY_TARGET - baseStandby.length, 0) }, (_, index) => {
-    const seq = baseStandby.length + index + 1;
-    return {
-      id: `ADV-${String(200 + seq).slice(-3)}`,
-      name: `推薦候補${String(seq).padStart(2, "0")}`,
-      rank: rankCycle[(seq + 1) % rankCycle.length],
-      role: roleCycle[(seq + 3) % roleCycle.length],
-      note: "申請なし / 受付推薦（ダミー）",
-      source: "推薦",
-    };
-  }),
-].slice(0, STANDBY_TARGET);
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 export default function QuestSelectionPage() {
   const params = useParams();
   const questId = typeof params?.id === "string" ? params.id : params?.id?.[0];
   const [quest, setQuest] = useState(null);
+  const [adventurers, setAdventurers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useDevUser("reception");
   const [applicantPage, setApplicantPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [activeList, setActiveList] = useState("applicants");
@@ -123,25 +24,30 @@ export default function QuestSelectionPage() {
   const pageSize = 6;
   // 仮選定中は別ページング
   const [selectedPage, setSelectedPage] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const applicantList = useMemo(
+    () => (adventurers ?? []).filter((item) => item.source === "申請"),
+    [adventurers],
+  );
+  const totalAdventurers = adventurers.length;
 
   const applicantTotalPages = Math.max(Math.ceil(applicantList.length / pageSize), 1);
-  const allTotalPages = Math.max(Math.ceil((applicantList.length + standbyList.length) / pageSize), 1);
+  const allTotalPages = Math.max(Math.ceil((adventurers ?? []).length / pageSize), 1);
 
   const applicantPageItems = useMemo(() => {
     const startIndex = (applicantPage - 1) * pageSize;
     return applicantList.slice(startIndex, startIndex + pageSize);
-  }, [applicantPage]);
-
-  const allAdventurers = useMemo(() => [...applicantList, ...standbyList], []);
+  }, [applicantPage, applicantList]);
 
   const allPageItems = useMemo(() => {
     const startIndex = (allPage - 1) * pageSize;
-    return allAdventurers.slice(startIndex, startIndex + pageSize);
-  }, [allAdventurers, allPage]);
+    return (adventurers ?? []).slice(startIndex, startIndex + pageSize);
+  }, [adventurers, allPage]);
 
   const adventurerMap = useMemo(() => {
-    return new Map(allAdventurers.map((item) => [item.id, item]));
-  }, []);
+    return new Map((adventurers ?? []).map((item) => [item.id, item]));
+  }, [adventurers]);
 
   const selectedAdventurers = useMemo(
     () => selectedIds.map((id) => adventurerMap.get(id)).filter(Boolean),
@@ -154,6 +60,8 @@ export default function QuestSelectionPage() {
     return selectedAdventurers.slice(startIndex, startIndex + pageSize);
   }, [selectedAdventurers, selectedPage]);
 
+  const activeQuest = useMemo(() => quest, [quest]);
+
   const toggleSelection = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
@@ -162,15 +70,18 @@ export default function QuestSelectionPage() {
     if (!questId) return;
     let active = true;
     setIsLoading(true);
-    fetch(`/api/quests/${questId}`)
-      .then((response) => response.json())
-      .then((data) => {
+    Promise.all([fetch(`/api/quests/${questId}`), fetch("/api/adventurers")])
+      .then(async ([questResponse, adventurerResponse]) => {
+        const questData = await questResponse.json();
+        const adventurerData = await adventurerResponse.json();
         if (!active) return;
-        setQuest(data.quest ?? null);
+        setQuest(questData.quest ?? null);
+        setAdventurers(adventurerData.adventurers ?? []);
       })
       .catch(() => {
         if (!active) return;
         setQuest(null);
+        setAdventurers([]);
       })
       .finally(() => {
         if (!active) return;
@@ -180,6 +91,14 @@ export default function QuestSelectionPage() {
       active = false;
     };
   }, [questId]);
+
+  useEffect(() => {
+    if (!activeQuest) return;
+    const stored = Array.isArray(activeQuest.selectedAdventurers)
+      ? activeQuest.selectedAdventurers
+      : [];
+    setSelectedIds(stored);
+  }, [activeQuest]);
 
   useEffect(() => {
     if (selectedPage > selectedTotalPages) {
@@ -195,7 +114,28 @@ export default function QuestSelectionPage() {
     setAllPage(Math.min(Math.max(nextPage, 1), allTotalPages));
   };
 
-  const activeQuest = useMemo(() => quest, [quest]);
+  const handleSaveSelection = async () => {
+    if (!activeQuest?.id || !user?.id) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/quests/${activeQuest.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "select",
+          actorId: user?.id,
+          selectedIds,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("選定内容の保存に失敗しました。");
+      }
+      const data = await response.json();
+      setQuest(data.quest ?? activeQuest);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -247,11 +187,17 @@ export default function QuestSelectionPage() {
             <Button size="sm" variant="outline" asChild>
               <Link href="/reception">受付コンソールへ戻る</Link>
             </Button>
-            <Button size="sm" asChild>
-              <Link href="/reception">選定完了（ダミー）</Link>
+            <Button size="sm" onClick={handleSaveSelection} disabled={isSaving || !user?.id}>
+              {isSaving ? "保存中..." : "選定を保存"}
             </Button>
           </div>
         </header>
+
+        <DevUserSelector
+          role="reception"
+          roleLabel="受付"
+          helperText="開発用ユーザーを選択すると選定保存が可能になります。"
+        />
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr_1fr]">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
@@ -264,6 +210,8 @@ export default function QuestSelectionPage() {
               <Badge variant="secondary">{activeQuest.status}</Badge>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              <InfoRow label="受付" value={activeQuest.receptionistName ?? "未設定"} />
+              <InfoRow label="冒険者" value={activeQuest.adventurerName ?? "未設定"} />
               <InfoRow label="募集枠" value={activeQuest.slots ?? "未設定"} />
               <InfoRow label="報酬" value={activeQuest.reward ?? "未設定"} />
               <InfoRow label="ランク制限" value={activeQuest.rank ?? "未設定"} />
@@ -363,7 +311,7 @@ export default function QuestSelectionPage() {
                     variant={activeList === "all" ? "default" : "outline"}
                     onClick={() => setActiveList("all")}
                   >
-                    全冒険者（{applicantList.length + standbyList.length}）
+                    全冒険者（{totalAdventurers}）
                   </Button>
                 </div>
               </div>

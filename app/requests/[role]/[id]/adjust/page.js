@@ -14,6 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../../confirm-action-button";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -49,12 +51,21 @@ export default function AdjustPage() {
   const isRoleValid = Boolean(role);
   const roleForLinks = role ?? "requester";
   const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
+  const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
+  const { user } = useDevUser(roleForLinks);
+  const requesterId = roleForLinks === "requester" ? user?.id : "";
 
   useEffect(() => {
     if (!requestId) return;
+    if (roleForLinks === "requester" && !requesterId) {
+      setCurrentRequest(null);
+      setIsLoading(false);
+      return;
+    }
     let active = true;
     setIsLoading(true);
-    fetch(`/api/requests/${requestId}`)
+    const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
+    fetch(`/api/requests/${requestId}${query}`)
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
@@ -71,7 +82,7 @@ export default function AdjustPage() {
     return () => {
       active = false;
     };
-  }, [requestId]);
+  }, [requestId, requesterId, roleForLinks]);
 
   const [suggestedFields, setSuggestedFields] = useState(() => emptyDraft.suggested);
   const [reason, setReason] = useState(emptyDraft.reason);
@@ -105,7 +116,8 @@ export default function AdjustPage() {
 
   const isLocked =
     roleForLinks === "reception" ? inferredAgreement.receptionistAgreed : inferredAgreement.requesterAgreed;
-  const canSubmit = Boolean(currentRequest) && !isLocked && isRoleValid;
+  const hasActor = Boolean(user?.id);
+  const canSubmit = Boolean(currentRequest) && !isLocked && isRoleValid && hasActor;
 
   const handleFieldChange = (label, value) => {
     setSuggestedFields((prev) => ({ ...prev, [label]: value }));
@@ -119,6 +131,7 @@ export default function AdjustPage() {
       body: JSON.stringify({
         mode: "adjust",
         actorRole: roleForLinks,
+        actorId: user?.id,
         fields: suggestedFields,
         reason,
       }),
@@ -146,6 +159,25 @@ export default function AdjustPage() {
   }
 
   if (!currentRequest) {
+    if (roleForLinks === "requester" && !requesterId) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+          <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
+                <CardDescription>上の開発用ログインでユーザーを選ぶと、調整内容が表示されます。</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button variant="outline" asChild>
+                  <Link href="/requests">一覧へ戻る</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
@@ -189,6 +221,12 @@ export default function AdjustPage() {
             <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
           </Button>
         </header>
+
+        <DevUserSelector
+          role={roleForLinks}
+          roleLabel={roleLabel}
+          helperText="開発用ユーザーを選択すると調整案の送信が可能になります。"
+        />
 
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import ConfirmActionButton from "../confirm-action-button";
 import { useRouter } from "next/navigation";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 const fields = [
   { label: "依頼タイトル", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
@@ -19,6 +21,7 @@ const fields = [
 
 export default function NewRequestPage() {
   const router = useRouter();
+  const { user } = useDevUser("requester");
   const [formState, setFormState] = useState(() =>
     fields.reduce((acc, field) => {
       acc[field.label] = "";
@@ -27,8 +30,8 @@ export default function NewRequestPage() {
   );
 
   const canSubmit = useMemo(() => {
-    return Boolean(formState["依頼タイトル"]);
-  }, [formState]);
+    return Boolean(formState["依頼タイトル"]) && Boolean(user?.id);
+  }, [formState, user]);
 
   const handleChange = (label, value) => {
     setFormState((prev) => ({ ...prev, [label]: value }));
@@ -42,6 +45,7 @@ export default function NewRequestPage() {
       body: JSON.stringify({
         title: formState["依頼タイトル"],
         fields: formState,
+        requesterId: user?.id,
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -63,6 +67,12 @@ export default function NewRequestPage() {
             <Link href="/requests">一覧へ</Link>
           </Button>
         </header>
+
+        <DevUserSelector
+          role="requester"
+          roleLabel="依頼者"
+          helperText="開発用ユーザーを選択すると依頼作成が可能になります。"
+        />
 
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>

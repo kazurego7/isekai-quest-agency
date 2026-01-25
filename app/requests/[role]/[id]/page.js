@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../confirm-action-button";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 const fieldOrder = [
   "依頼タイトル",
@@ -67,12 +69,21 @@ export default function RequestDetail() {
   const isRoleValid = Boolean(role);
   const roleForLinks = role ?? "requester";
   const listHref = role === "reception" ? "/reception" : "/requests";
+  const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
+  const { user } = useDevUser(roleForLinks);
+  const requesterId = roleForLinks === "requester" ? user?.id : "";
 
   useEffect(() => {
     if (!id) return;
+    if (roleForLinks === "requester" && !requesterId) {
+      setCurrentRequest(null);
+      setIsLoading(false);
+      return;
+    }
     let active = true;
     setIsLoading(true);
-    fetch(`/api/requests/${id}`)
+    const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
+    fetch(`/api/requests/${id}${query}`)
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
@@ -89,9 +100,10 @@ export default function RequestDetail() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, requesterId, roleForLinks]);
 
   const request = useMemo(() => currentRequest, [currentRequest]);
+  const hasActor = Boolean(user?.id);
 
   const agreement = useMemo(
     () => ({
@@ -106,23 +118,23 @@ export default function RequestDetail() {
   const otherAgreed =
     roleForLinks === "reception" ? agreement.requesterAgreed : agreement.receptionistAgreed;
   const status = request?.status ?? "";
-  const canAgree = isRoleValid && ["確認前", "合意待ち"].includes(status) && !selfAgreed;
+  const canAgree = hasActor && isRoleValid && ["確認前", "合意待ち"].includes(status) && !selfAgreed;
   const canAdjust = useMemo(() => {
-    if (!isRoleValid) return false;
+    if (!isRoleValid || !hasActor) return false;
     if (status !== "確認前" && status !== "合意待ち") return false;
     return otherAgreed && !selfAgreed;
-  }, [isRoleValid, otherAgreed, selfAgreed, status]);
+  }, [hasActor, isRoleValid, otherAgreed, selfAgreed, status]);
   const canShowActions = isRoleValid && !canAgree && !canAdjust;
 
   const handleAgree = async () => {
-    if (!currentRequest || !isRoleValid) {
+    if (!currentRequest || !isRoleValid || !user?.id) {
       router.push(listHref);
       return;
     }
     const response = await fetch(`/api/requests/${request.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "agree", actorRole: roleForLinks }),
+      body: JSON.stringify({ mode: "agree", actorRole: roleForLinks, actorId: user?.id }),
     });
     if (!response.ok) {
       return;
@@ -159,6 +171,25 @@ export default function RequestDetail() {
   }
 
   if (!request) {
+    if (roleForLinks === "requester" && !requesterId) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+          <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
+                <CardDescription>上の開発用ログインでユーザーを選ぶと、依頼詳細が表示されます。</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button variant="outline" asChild>
+                  <Link href="/requests">一覧へ戻る</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
@@ -190,6 +221,12 @@ export default function RequestDetail() {
             <Link href={listHref}>一覧へ</Link>
           </Button>
         </header>
+
+        <DevUserSelector
+          role={roleForLinks}
+          roleLabel={roleLabel}
+          helperText="開発用ユーザーを選択すると合意や調整が可能になります。"
+        />
 
         {isDraft ? (
           <Card className="border border-primary/15 bg-white/90 shadow-sm">
@@ -263,6 +300,16 @@ export default function RequestDetail() {
               <CardDescription>{request.notes ?? "詳細がまだ登録されていません。"}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">依頼者</span>
+                  <span className="text-ink">{request.requesterName ?? "未設定"}</span>
+                </div>
+                <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">受付</span>
+                  <span className="text-ink">{request.receptionistName ?? "未設定"}</span>
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-3">
                 {fieldOrder.map((label) => (
                   <div

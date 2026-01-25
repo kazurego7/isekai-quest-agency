@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestReviewClient from "./quest-review-client";
+import DevUserSelector from "@/components/dev-user-selector";
+import { useDevUser } from "@/lib/dev-user";
 
 export default function ReceptionReviewDetail() {
   const params = useParams();
@@ -15,6 +17,7 @@ export default function ReceptionReviewDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
+  const { user } = useDevUser("reception");
 
   useEffect(() => {
     if (!id) return;
@@ -51,11 +54,11 @@ export default function ReceptionReviewDetail() {
   }, [quest]);
 
   const handleVerify = (reviewNote) => {
-    if (!normalizedQuest?.id) return;
+    if (!normalizedQuest?.id || !user?.id) return;
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "verify", reviewNote }),
+      body: JSON.stringify({ mode: "verify", reviewNote, actorId: user?.id }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("達成確認の記録に失敗しました。");
@@ -117,6 +120,12 @@ export default function ReceptionReviewDetail() {
           </div>
         </header>
 
+        <DevUserSelector
+          role="reception"
+          roleLabel="受付"
+          helperText="開発用ユーザーを選択すると達成確認の記録に使われます。"
+        />
+
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
             <CardHeader className="flex items-start justify-between gap-4">
@@ -128,6 +137,8 @@ export default function ReceptionReviewDetail() {
               <Badge variant="secondary">{normalizedQuest.status}</Badge>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              <InfoRow label="受付" value={normalizedQuest.receptionistName ?? "未設定"} />
+              <InfoRow label="冒険者" value={normalizedQuest.adventurerName ?? "未設定"} />
               <InfoRow label="募集枠" value={normalizedQuest.slots} />
               <InfoRow label="報酬" value={normalizedQuest.reward ?? "未設定"} />
               <InfoRow label="ランク制限" value={normalizedQuest.rank ?? "未設定"} />

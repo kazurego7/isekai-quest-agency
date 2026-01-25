@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import DevUserSelector from "@/components/dev-user-selector";
 
 export default function ReceptionPage() {
   const [requests, setRequests] = useState([]);
@@ -92,6 +93,12 @@ export default function ReceptionPage() {
           </div>
         </header>
 
+        <DevUserSelector
+          role="reception"
+          roleLabel="受付"
+          helperText="開発用ユーザーを選択すると受付操作の記録に使われます。"
+        />
+
         <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:auto-rows-fr">
           <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">
             <CardHeader className="space-y-2">
@@ -115,6 +122,7 @@ export default function ReceptionPage() {
                       <Badge variant="muted">{item.status}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{item.notes}</p>
+                    <p className="text-xs text-muted-foreground">依頼者: {item.requesterName ?? "未設定"}</p>
                     <p className="text-xs text-ink">次のアクション: 依頼内容の確認</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
@@ -161,6 +169,7 @@ export default function ReceptionPage() {
                   </div>
                   <p className="text-sm text-ink">報酬案: {draft.fields["報酬上限額"] ?? "未設定"}</p>
                   <p className="text-sm text-muted-foreground">リスク: {draft.fields["危険度・同行条件"] ?? "未設定"}</p>
+                  <p className="text-xs text-muted-foreground">依頼者: {draft.requesterName ?? "未設定"}</p>
                   {draft.status === "合意済み" ? (
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="border-dashed text-xs" asChild>
@@ -205,6 +214,9 @@ export default function ReceptionPage() {
                       <Badge variant="muted">{quest.status}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                    <p className="text-xs text-muted-foreground">
+                      受付: {quest.receptionistName ?? "未設定"} / 冒険者: {quest.adventurerName ?? "未設定"}
+                    </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
                         <Link href={`/reception/quests/${quest.id}`}>選定へ</Link>
@@ -243,6 +255,9 @@ export default function ReceptionPage() {
                       <Badge variant="muted">評価待ち</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
+                    <p className="text-xs text-muted-foreground">
+                      受付: {quest.receptionistName ?? "未設定"} / 冒険者: {quest.adventurerName ?? "未設定"}
+                    </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="outline" className="text-xs" asChild>
                         <Link href={`/reception/reviews/${quest.id}`}>完了報告を確認</Link>
