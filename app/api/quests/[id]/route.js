@@ -12,7 +12,23 @@ export async function GET(_request, context) {
     return NextResponse.json({ error: "クエストが見つかりません。" }, { status: 404 });
   }
 
-  return NextResponse.json({ quest });
+  const loaded = await prisma.quest.findUnique({
+    where: { id },
+    include: {
+      receptionist: true,
+      adventurer: true,
+      selectedAdventurers: true,
+    },
+  });
+
+  return NextResponse.json({
+    quest: {
+      ...loaded,
+      receptionistName: loaded?.receptionist?.name ?? null,
+      adventurerName: loaded?.adventurer?.name ?? null,
+      selectedAdventurerIds: (loaded?.selectedAdventurers ?? []).map((item) => item.adventurerId),
+    },
+  });
 }
 
 export async function PATCH(request, context) {
@@ -37,8 +53,12 @@ export async function PATCH(request, context) {
         data: {
           status: "受注済み",
           summary: "冒険者が受注しました。進行状況の更新を待っています。",
-          adventurerName: actor.name,
           adventurerId: actor.id,
+        },
+        include: {
+          receptionist: true,
+          adventurer: true,
+          selectedAdventurers: true,
         },
       });
 
@@ -55,7 +75,14 @@ export async function PATCH(request, context) {
       return quest;
     });
 
-    return NextResponse.json({ quest: updated });
+    return NextResponse.json({
+      quest: {
+        ...updated,
+        receptionistName: updated.receptionist?.name ?? null,
+        adventurerName: updated.adventurer?.name ?? null,
+        selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
+      },
+    });
   }
 
   if (mode === "report") {
@@ -74,12 +101,23 @@ export async function PATCH(request, context) {
         reportComment,
         checklist,
         photos,
-        adventurerName: actor.name,
         adventurerId: actor.id,
+      },
+      include: {
+        receptionist: true,
+        adventurer: true,
+        selectedAdventurers: true,
       },
     });
 
-    return NextResponse.json({ quest: updated });
+    return NextResponse.json({
+      quest: {
+        ...updated,
+        receptionistName: updated.receptionist?.name ?? null,
+        adventurerName: updated.adventurer?.name ?? null,
+        selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
+      },
+    });
   }
 
   if (mode === "verify") {
@@ -94,8 +132,12 @@ export async function PATCH(request, context) {
           status: "達成確認済み",
           summary: "受付の達成確認が完了。履歴に保存。",
           reviewNote,
-          receptionistName: actor.name,
           receptionistId: actor.id,
+        },
+        include: {
+          receptionist: true,
+          adventurer: true,
+          selectedAdventurers: true,
         },
       });
 
@@ -112,7 +154,14 @@ export async function PATCH(request, context) {
       return quest;
     });
 
-    return NextResponse.json({ quest: updated });
+    return NextResponse.json({
+      quest: {
+        ...updated,
+        receptionistName: updated.receptionist?.name ?? null,
+        adventurerName: updated.adventurer?.name ?? null,
+        selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
+      },
+    });
   }
 
   if (mode === "select") {
@@ -124,17 +173,40 @@ export async function PATCH(request, context) {
       return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
     }
 
-    const updated = await prisma.quest.update({
-      where: { id },
-      data: {
-        selectedAdventurers: selectedIds,
-        receptionistName: actor.name,
-        receptionistId: actor.id,
-        summary: "受付が冒険者を選定中です。",
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.questAdventurer.deleteMany({
+        where: { questId: id },
+      });
+      if (selectedIds.length) {
+        await tx.questAdventurer.createMany({
+          data: selectedIds.map((adventurerId) => ({
+            questId: id,
+            adventurerId,
+          })),
+        });
+      }
+      return tx.quest.update({
+        where: { id },
+        data: {
+          receptionistId: actor.id,
+          summary: "受付が冒険者を選定中です。",
+        },
+        include: {
+          receptionist: true,
+          adventurer: true,
+          selectedAdventurers: true,
+        },
+      });
     });
 
-    return NextResponse.json({ quest: updated });
+    return NextResponse.json({
+      quest: {
+        ...updated,
+        receptionistName: updated.receptionist?.name ?? null,
+        adventurerName: updated.adventurer?.name ?? null,
+        selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
+      },
+    });
   }
 
   return NextResponse.json({ error: "更新内容が不正です。" }, { status: 400 });

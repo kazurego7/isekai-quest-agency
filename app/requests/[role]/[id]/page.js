@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -15,17 +15,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../confirm-action-button";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 
 const fieldOrder = [
-  "依頼タイトル",
-  "目的・背景",
-  "場所",
-  "完了期限",
-  "危険度・同行条件",
-  "報酬上限額",
-  "備考",
+  { label: "依頼タイトル", key: "title" },
+  { label: "目的・背景", key: "purpose" },
+  { label: "場所", key: "location" },
+  { label: "完了期限", key: "deadline" },
+  { label: "危険度・同行条件", key: "risk" },
+  { label: "報酬上限額", key: "reward" },
+  { label: "備考", key: "requesterNote" },
 ];
 
 const statusStyle = {
@@ -38,12 +38,23 @@ const statusStyle = {
   クエスト化済み: "secondary",
 };
 
+const deriveViewStatus = ({ status, requesterAgreed, receptionistAgreed }, role) => {
+  if (!["確認前", "合意待ち", "合意済み"].includes(status)) {
+    return status;
+  }
+  if (requesterAgreed && receptionistAgreed) {
+    return "合意済み";
+  }
+  const selfAgreed = role === "reception" ? receptionistAgreed : requesterAgreed;
+  return selfAgreed ? "合意待ち" : "確認前";
+};
+
 function actionsByStatus(status) {
   switch (status) {
     case "下書き":
       return [
-        { label: "送信（ダミー）", href: "/requests", variant: "default" },
-        { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary" },
+        { label: "送信", href: "/requests", variant: "default" },
+        { label: "下書き保存", href: "/requests", variant: "secondary" },
       ];
     case "合意済み":
       return [{ label: "合意済み", href: "/requests", variant: "ghost" }];
@@ -70,27 +81,39 @@ export default function RequestDetail() {
   const roleForLinks = role ?? "requester";
   const listHref = role === "reception" ? "/reception" : "/requests";
   const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
-  const { user } = useDevUser(roleForLinks);
+  const { user, users, userId, selectUser, ready, isEnabled } = useDevUser(roleForLinks);
   const requesterId = roleForLinks === "requester" ? user?.id : "";
+  const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!id) return;
-    if (roleForLinks === "requester" && !requesterId) {
-      setCurrentRequest(null);
-      setIsLoading(false);
-      return;
+    if (roleForLinks === "requester") {
+      if (!ready) {
+        return;
+      }
+      if (!requesterId) {
+        setCurrentRequest(null);
+        setIsLoading(false);
+        return;
+      }
     }
     let active = true;
     setIsLoading(true);
     const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
-    fetch(`/api/requests/${id}${query}`)
+    if (activeAbortRef.current) {
+      activeAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+    fetch(`/api/requests/${id}${query}`, { signal: controller.signal })
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
         setCurrentRequest(data.request ?? null);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        if (error?.name === "AbortError") return;
         setCurrentRequest(null);
       })
       .finally(() => {
@@ -99,8 +122,9 @@ export default function RequestDetail() {
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [id, requesterId, roleForLinks]);
+  }, [id, ready, requesterId, roleForLinks]);
 
   const request = useMemo(() => currentRequest, [currentRequest]);
   const hasActor = Boolean(user?.id);
@@ -118,6 +142,17 @@ export default function RequestDetail() {
   const otherAgreed =
     roleForLinks === "reception" ? agreement.requesterAgreed : agreement.receptionistAgreed;
   const status = request?.status ?? "";
+  const viewStatus = useMemo(() => {
+    if (!request) return "";
+    return deriveViewStatus(
+      {
+        status: request.status,
+        requesterAgreed: Boolean(request.requesterAgreed),
+        receptionistAgreed: Boolean(request.receptionistAgreed),
+      },
+      roleForLinks,
+    );
+  }, [request, roleForLinks]);
   const canAgree = hasActor && isRoleValid && ["確認前", "合意待ち"].includes(status) && !selfAgreed;
   const canAdjust = useMemo(() => {
     if (!isRoleValid || !hasActor) return false;
@@ -142,18 +177,78 @@ export default function RequestDetail() {
     router.push(listHref);
   };
   const isDraft = status === "下書き";
-  const draftActions = [
-    {
-      label: "送信（ダミー）",
-      href: "/requests",
-      variant: "default",
-      requireConfirm: true,
-      confirmTitle: "この内容で送信しますか？",
-      confirmMessage: "送信後は編集できません。",
-      confirmLabel: "送信する",
-    },
-    { label: "下書き保存（ダミー）", href: "/requests", variant: "secondary", requireConfirm: false },
-  ];
+  const [draftFields, setDraftFields] = useState(null);
+
+  useEffect(() => {
+    if (!request || !isDraft) return;
+    setDraftFields({
+      title: request.title ?? "",
+      purpose: request.purpose ?? "",
+      location: request.location ?? "",
+      deadline: request.deadline ?? "",
+      risk: request.risk ?? "",
+      reward: request.reward ?? "",
+      requesterNote: request.requesterNote ?? "",
+    });
+  }, [request, isDraft]);
+
+  const canSaveDraft = isDraft && hasActor && isRoleValid && roleForLinks === "requester";
+  const canSubmitDraft = canSaveDraft && Boolean(draftFields?.title);
+
+  const handleDraftChange = (key, value) => {
+    setDraftFields((prev) => ({ ...(prev ?? {}), [key]: value }));
+  };
+
+  const handleDraftSave = async () => {
+    if (!request || !canSaveDraft) return;
+    const response = await fetch(`/api/requests/${request.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "draft-save",
+        actorRole: roleForLinks,
+        actorId: user?.id,
+        fields: draftFields ?? {},
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("下書きの保存に失敗しました。");
+    }
+    const data = await response.json();
+    setCurrentRequest(data.request ?? null);
+  };
+
+  const handleDraftSubmit = async () => {
+    if (!request || !canSubmitDraft) return;
+    const response = await fetch(`/api/requests/${request.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "submit",
+        actorRole: roleForLinks,
+        actorId: user?.id,
+        fields: draftFields ?? {},
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("依頼の送信に失敗しました。");
+    }
+  };
+
+  const handleDraftDelete = async () => {
+    if (!request || !canSaveDraft) return;
+    const response = await fetch(`/api/requests/${request.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actorRole: roleForLinks,
+        actorId: user?.id,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("下書きの削除に失敗しました。");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -175,6 +270,26 @@ export default function RequestDetail() {
       return (
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
           <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+            <header className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.32em] text-primary">Detail</p>
+                <h1 className="font-serif text-2xl">依頼詳細</h1>
+              </div>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={listHref}>一覧へ</Link>
+              </Button>
+            </header>
+
+            <DevUserSelectorView
+              user={user}
+              users={users}
+              userId={userId}
+              selectUser={selectUser}
+              isEnabled={isEnabled}
+              roleLabel={roleLabel}
+              helperText="開発用ユーザーを選択すると合意や調整が可能になります。"
+            />
+
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
@@ -193,10 +308,33 @@ export default function RequestDetail() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+          <header className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-primary">Detail</p>
+              <h1 className="font-serif text-2xl">依頼詳細</h1>
+            </div>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={listHref}>一覧へ</Link>
+            </Button>
+          </header>
+
+          <DevUserSelectorView
+            user={user}
+            users={users}
+            userId={userId}
+            selectUser={selectUser}
+            isEnabled={isEnabled}
+            roleLabel={roleLabel}
+            helperText="開発用ユーザーを切り替えると表示できる場合があります。"
+          />
+
           <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
             <CardHeader className="space-y-1">
               <CardTitle className="text-base text-ink">依頼が見つかりません</CardTitle>
-              <CardDescription>一覧から依頼を選び直してください。</CardDescription>
+              <CardDescription>
+                一覧から依頼を選び直してください。
+                {roleForLinks === "requester" ? " 選択中の依頼者が一致しているかも確認してください。" : ""}
+              </CardDescription>
             </CardHeader>
             <CardFooter>
               <Button variant="outline" asChild>
@@ -222,8 +360,12 @@ export default function RequestDetail() {
           </Button>
         </header>
 
-        <DevUserSelector
-          role={roleForLinks}
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel={roleLabel}
           helperText="開発用ユーザーを選択すると合意や調整が可能になります。"
         />
@@ -246,48 +388,58 @@ export default function RequestDetail() {
                   variant="outline"
                   size="icon"
                   className="h-10 w-10 rounded-full border-red-200 text-red-500 hover:border-red-300 hover:bg-red-50"
-                  ariaLabel="下書きを削除（ダミー）"
+                  ariaLabel="下書きを削除"
+                  onConfirm={handleDraftDelete}
                 >
                   ×
                 </ConfirmActionButton>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {fieldOrder.map((label) =>
-                label === "備考" ? (
-                  <label key={label} className="space-y-1">
+              {fieldOrder.map(({ label, key }) =>
+                key === "requesterNote" ? (
+                  <label key={key} className="space-y-1">
                     <span className="block text-sm font-semibold text-ink">{label}</span>
                     <textarea
                       className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                      defaultValue={request.fields[label]}
+                      value={draftFields?.[key] ?? ""}
+                      onChange={(event) => handleDraftChange(key, event.target.value)}
                     />
                   </label>
                 ) : (
-                  <label key={label} className="space-y-1">
+                  <label key={key} className="space-y-1">
                     <span className="block text-sm font-semibold text-ink">{label}</span>
                     <input
                       className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                      defaultValue={request.fields[label]}
+                      value={draftFields?.[key] ?? ""}
+                      onChange={(event) => handleDraftChange(key, event.target.value)}
                     />
                   </label>
                 ),
               )}
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
-              {draftActions.map((action) => (
-                <ConfirmActionButton
-                  key={action.label}
-                  href={action.href}
-                  requireConfirm={action.requireConfirm}
-                  confirmTitle={action.confirmTitle}
-                  confirmMessage={action.confirmMessage}
-                  confirmLabel={action.confirmLabel}
-                  variant={action.variant}
-                  size="sm"
-                >
-                  {action.label}
-                </ConfirmActionButton>
-              ))}
+              <ConfirmActionButton
+                href="/requests"
+                requireConfirm
+                confirmTitle="この内容で送信しますか？"
+                confirmMessage="送信後は編集できません。"
+                confirmLabel="送信する"
+                variant="default"
+                size="sm"
+                onConfirm={handleDraftSubmit}
+                className={!canSubmitDraft ? "pointer-events-none opacity-50" : undefined}
+              >
+                送信
+              </ConfirmActionButton>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleDraftSave}
+                className={!canSaveDraft ? "pointer-events-none opacity-50" : undefined}
+              >
+                下書き保存
+              </Button>
             </CardFooter>
           </Card>
         ) : (
@@ -295,7 +447,7 @@ export default function RequestDetail() {
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between">
                 <CardTitle className="text-xl text-ink">{request.title}</CardTitle>
-                <Badge variant={statusStyle[request.status] ?? "muted"}>{request.status}</Badge>
+                <Badge variant={statusStyle[viewStatus] ?? "muted"}>{viewStatus}</Badge>
               </div>
               <CardDescription>{request.notes ?? "詳細がまだ登録されていません。"}</CardDescription>
             </CardHeader>
@@ -311,13 +463,13 @@ export default function RequestDetail() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3">
-                {fieldOrder.map((label) => (
+                {fieldOrder.map(({ label, key }) => (
                   <div
-                    key={label}
+                    key={key}
                     className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/60 px-3 py-3 text-sm"
                   >
                     <span className="text-muted-foreground">{label}</span>
-                    <span className="text-ink">{request?.fields?.[label] ?? "未入力"}</span>
+                    <span className="text-ink">{request?.[key] ?? "未入力"}</span>
                   </div>
                 ))}
               </div>

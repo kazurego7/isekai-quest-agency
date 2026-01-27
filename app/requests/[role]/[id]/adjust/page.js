@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -14,27 +14,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../../confirm-action-button";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 
 const fieldOrder = [
-  "依頼タイトル",
-  "目的・背景",
-  "場所",
-  "完了期限",
-  "危険度・同行条件",
-  "報酬上限額",
-  "備考",
+  { label: "依頼タイトル", key: "title" },
+  { label: "目的・背景", key: "purpose" },
+  { label: "場所", key: "location" },
+  { label: "完了期限", key: "deadline" },
+  { label: "危険度・同行条件", key: "risk" },
+  { label: "報酬上限額", key: "reward" },
+  { label: "備考", key: "requesterNote" },
 ];
 
 const emptyDraft = {
   title: "依頼が見つかりません",
-  before: fieldOrder.reduce((acc, key) => {
-    acc[key] = "";
+  before: fieldOrder.reduce((acc, field) => {
+    acc[field.key] = "";
     return acc;
   }, {}),
-  suggested: fieldOrder.reduce((acc, key) => {
-    acc[key] = "";
+  suggested: fieldOrder.reduce((acc, field) => {
+    acc[field.key] = "";
     return acc;
   }, {}),
   reason: "調整内容が取得できませんでした。",
@@ -52,27 +52,39 @@ export default function AdjustPage() {
   const roleForLinks = role ?? "requester";
   const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
   const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
-  const { user } = useDevUser(roleForLinks);
+  const { user, users, userId, selectUser, ready, isEnabled } = useDevUser(roleForLinks);
   const requesterId = roleForLinks === "requester" ? user?.id : "";
+  const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!requestId) return;
-    if (roleForLinks === "requester" && !requesterId) {
-      setCurrentRequest(null);
-      setIsLoading(false);
-      return;
+    if (roleForLinks === "requester") {
+      if (!ready) {
+        return;
+      }
+      if (!requesterId) {
+        setCurrentRequest(null);
+        setIsLoading(false);
+        return;
+      }
     }
     let active = true;
     setIsLoading(true);
     const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
-    fetch(`/api/requests/${requestId}${query}`)
+    if (activeAbortRef.current) {
+      activeAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+    fetch(`/api/requests/${requestId}${query}`, { signal: controller.signal })
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
         setCurrentRequest(data.request ?? null);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        if (error?.name === "AbortError") return;
         setCurrentRequest(null);
       })
       .finally(() => {
@@ -81,8 +93,9 @@ export default function AdjustPage() {
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [requestId, requesterId, roleForLinks]);
+  }, [requestId, ready, requesterId, roleForLinks]);
 
   const [suggestedFields, setSuggestedFields] = useState(() => emptyDraft.suggested);
   const [reason, setReason] = useState(emptyDraft.reason);
@@ -91,8 +104,8 @@ export default function AdjustPage() {
     if (currentRequest) {
       return {
         title: currentRequest.title,
-        before: currentRequest.fields ?? {},
-        suggested: currentRequest.fields ?? {},
+        before: currentRequest ?? {},
+        suggested: currentRequest ?? {},
         reason: "調整の理由を記載",
       };
     }
@@ -119,8 +132,8 @@ export default function AdjustPage() {
   const hasActor = Boolean(user?.id);
   const canSubmit = Boolean(currentRequest) && !isLocked && isRoleValid && hasActor;
 
-  const handleFieldChange = (label, value) => {
-    setSuggestedFields((prev) => ({ ...prev, [label]: value }));
+  const handleFieldChange = (key, value) => {
+    setSuggestedFields((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = () => {
@@ -132,7 +145,15 @@ export default function AdjustPage() {
         mode: "adjust",
         actorRole: roleForLinks,
         actorId: user?.id,
-        fields: suggestedFields,
+        fields: {
+          title: suggestedFields.title,
+          purpose: suggestedFields.purpose,
+          location: suggestedFields.location,
+          deadline: suggestedFields.deadline,
+          risk: suggestedFields.risk,
+          reward: suggestedFields.reward,
+          requesterNote: suggestedFields.requesterNote,
+        },
         reason,
       }),
     }).then((response) => {
@@ -163,6 +184,29 @@ export default function AdjustPage() {
       return (
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
           <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+            <header className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
+                <h1 className="font-serif text-2xl">依頼調整</h1>
+                <p className="text-sm text-muted-foreground">
+                  依頼者と受付嬢が交互に「合意」または「調整」を送ります。この画面では調整案のみ送信し、合意は詳細画面で行う想定です（誤合意防止のため）。
+                </p>
+              </div>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
+              </Button>
+            </header>
+
+            <DevUserSelectorView
+              user={user}
+              users={users}
+              userId={userId}
+              selectUser={selectUser}
+              isEnabled={isEnabled}
+              roleLabel={roleLabel}
+              helperText="開発用ユーザーを選択すると調整案の送信が可能になります。"
+            />
+
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
@@ -222,8 +266,12 @@ export default function AdjustPage() {
           </Button>
         </header>
 
-        <DevUserSelector
-          role={roleForLinks}
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel={roleLabel}
           helperText="開発用ユーザーを選択すると調整案の送信が可能になります。"
         />
@@ -234,24 +282,33 @@ export default function AdjustPage() {
             <CardDescription>調整前と調整後を上下で比較しながら入力できます。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {fieldOrder.map((label) => (
-              <div key={label} className="space-y-2 rounded-lg border border-border/50 bg-muted/40 p-3">
+            {fieldOrder.map((field) => (
+              <div key={field.key} className="space-y-2 rounded-lg border border-border/50 bg-muted/40 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-ink">{label}</span>
+                  <span className="text-sm font-semibold text-ink">{field.label}</span>
                   <span className="text-[11px] text-muted-foreground">上: 調整前（相手案） / 下: 調整後（今回の提案）</span>
                 </div>
                 <div className="space-y-2">
                   <input
                     className="w-full rounded-lg border border-border/70 bg-muted/60 px-3 py-2 text-sm text-foreground outline-none"
                     readOnly
-                    value={draft.before?.[label] ?? ""}
+                    value={draft.before?.[field.key] ?? ""}
                   />
-                  <input
-                    className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                    value={suggestedFields?.[label] ?? ""}
-                    onChange={(event) => handleFieldChange(label, event.target.value)}
-                    readOnly={isLocked}
-                  />
+                  {field.key === "requesterNote" ? (
+                    <textarea
+                      className="h-24 w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                      value={suggestedFields?.[field.key] ?? ""}
+                      onChange={(event) => handleFieldChange(field.key, event.target.value)}
+                      readOnly={isLocked}
+                    />
+                  ) : (
+                    <input
+                      className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                      value={suggestedFields?.[field.key] ?? ""}
+                      onChange={(event) => handleFieldChange(field.key, event.target.value)}
+                      readOnly={isLocked}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -287,7 +344,7 @@ export default function AdjustPage() {
 
         <Card className="border-none bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">合意ルール（ダミー）</CardTitle>
+            <CardTitle className="text-lg">合意ルール</CardTitle>
             <CardDescription>
               調整を送った側は合意済みとなり、相手の合意待ちになります。
             </CardDescription>

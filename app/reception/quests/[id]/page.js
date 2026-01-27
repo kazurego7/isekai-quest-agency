@@ -94,8 +94,8 @@ export default function QuestSelectionPage() {
 
   useEffect(() => {
     if (!activeQuest) return;
-    const stored = Array.isArray(activeQuest.selectedAdventurers)
-      ? activeQuest.selectedAdventurers
+    const stored = Array.isArray(activeQuest.selectedAdventurerIds)
+      ? activeQuest.selectedAdventurerIds
       : [];
     setSelectedIds(stored);
   }, [activeQuest]);

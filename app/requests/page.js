@@ -25,6 +25,16 @@ const statusStyle = {
   クエスト化済み: "secondary",
 };
 
+const deriveViewStatus = ({ status, requesterAgreed, receptionistAgreed }) => {
+  if (!["確認前", "合意待ち", "合意済み"].includes(status)) {
+    return status;
+  }
+  if (requesterAgreed && receptionistAgreed) {
+    return "合意済み";
+  }
+  return requesterAgreed ? "合意待ち" : "確認前";
+};
+
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,12 +108,18 @@ export default function RequestsPage() {
               </CardHeader>
             </Card>
           ) : sortedRequests.length ? (
-            sortedRequests.map((req) => (
-              <Card key={req.id} className="border border-border/70 bg-white/90 shadow-sm">
+            sortedRequests.map((req) => {
+              const viewStatus = deriveViewStatus({
+                status: req.status,
+                requesterAgreed: Boolean(req.requesterAgreed),
+                receptionistAgreed: Boolean(req.receptionistAgreed),
+              });
+              return (
+                <Card key={req.id} className="border border-border/70 bg-white/90 shadow-sm">
                 <CardHeader className="space-y-1">
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg text-ink">{req.title}</CardTitle>
-                    <Badge variant={statusStyle[req.status] ?? "muted"}>{req.status}</Badge>
+                    <Badge variant={statusStyle[viewStatus] ?? "muted"}>{viewStatus}</Badge>
                   </div>
                   <CardDescription>{req.summary ?? req.notes}</CardDescription>
                   <p className="text-xs text-muted-foreground">依頼者: {req.requesterName ?? "未設定"}</p>
@@ -114,7 +130,8 @@ export default function RequestsPage() {
                   </Button>
                 </CardFooter>
               </Card>
-            ))
+            );
+            })
           ) : (
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">

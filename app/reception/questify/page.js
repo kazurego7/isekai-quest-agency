@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -20,6 +20,27 @@ const publishFieldLabels = [
 ];
 
 export default function QuestifyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+          <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10">
+            <Card className="border border-dashed border-border/60 bg-white/80 shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
+                <CardDescription>依頼内容を取得しています。</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <QuestifyClient />
+    </Suspense>
+  );
+}
+
+function QuestifyClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestId = searchParams.get("requestId");
@@ -154,31 +175,31 @@ export default function QuestifyPage() {
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">依頼タイトル</span>
-                <span className="text-ink text-right">{request.fields?.["依頼タイトル"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.title ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">目的・背景</span>
-                <span className="text-ink text-right">{request.fields?.["目的・背景"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.purpose ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">場所</span>
-                <span className="text-ink text-right">{request.fields?.["場所"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.location ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">完了期限</span>
-                <span className="text-ink text-right">{request.fields?.["完了期限"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.deadline ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">危険度・同行条件</span>
-                <span className="text-ink text-right">{request.fields?.["危険度・同行条件"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.risk ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">報酬上限額</span>
-                <span className="text-ink text-right">{request.fields?.["報酬上限額"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.reward ?? "-"}</span>
               </div>
               <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
                 <span className="text-muted-foreground">備考</span>
-                <span className="text-ink text-right">{request.fields?.["備考"] ?? "-"}</span>
+                <span className="text-ink text-right">{request.requesterNote ?? "-"}</span>
               </div>
             </CardContent>
           </Card>

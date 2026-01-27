@@ -15,6 +15,29 @@ import {
 } from "@/components/ui/card";
 import DevUserSelector from "@/components/dev-user-selector";
 
+const statusStyle = {
+  合意待ち: "default",
+  確認前: "secondary",
+  下書き: "outline",
+  受注済み: "muted",
+  完了: "muted",
+  合意済み: "secondary",
+  クエスト化済み: "secondary",
+  募集中: "default",
+  完了報告済み: "secondary",
+  達成確認済み: "secondary",
+};
+
+const deriveViewStatus = ({ status, requesterAgreed, receptionistAgreed }) => {
+  if (!["確認前", "合意待ち", "合意済み"].includes(status)) {
+    return status;
+  }
+  if (requesterAgreed && receptionistAgreed) {
+    return "合意済み";
+  }
+  return receptionistAgreed ? "合意待ち" : "確認前";
+};
+
 export default function ReceptionPage() {
   const [requests, setRequests] = useState([]);
   const [quests, setQuests] = useState([]);
@@ -104,7 +127,6 @@ export default function ReceptionPage() {
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">合意中（受付視点）</CardTitle>
-                <Badge variant="secondary">確認前 / 合意待ち</Badge>
               </div>
               <CardDescription>依頼者との合意が終わっていない案件。依頼詳細を開いて対応します。</CardDescription>
             </CardHeader>
@@ -112,14 +134,20 @@ export default function ReceptionPage() {
               {isLoading ? (
                 <div className="px-4 py-6 text-sm text-muted-foreground">読み込み中...</div>
               ) : inAgreement.length ? (
-                inAgreement.map((item) => (
-                  <div key={item.id} className="space-y-1 px-4 py-3">
+                inAgreement.map((item) => {
+                  const viewStatus = deriveViewStatus({
+                    status: item.status,
+                    requesterAgreed: Boolean(item.requesterAgreed),
+                    receptionistAgreed: Boolean(item.receptionistAgreed),
+                  });
+                  return (
+                    <div key={item.id} className="space-y-1 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <p className="text-sm font-semibold text-ink">{item.title}</p>
                         <p className="text-xs text-muted-foreground">ID: {item.id}</p>
                       </div>
-                      <Badge variant="muted">{item.status}</Badge>
+                      <Badge variant={statusStyle[viewStatus] ?? "muted"}>{viewStatus}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{item.notes}</p>
                     <p className="text-xs text-muted-foreground">依頼者: {item.requesterName ?? "未設定"}</p>
@@ -130,7 +158,8 @@ export default function ReceptionPage() {
                       </Button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="px-4 py-6 text-sm text-muted-foreground">
                   現在の確認待ち依頼はありません。
@@ -143,7 +172,6 @@ export default function ReceptionPage() {
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">公開準備（依頼者と合意済みの内容）</CardTitle>
-                <Badge variant="secondary">公開前</Badge>
               </div>
               <CardDescription>
                 冒険者に公開する前に、ランク制限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
@@ -165,10 +193,10 @@ export default function ReceptionPage() {
                         <p className="text-xs uppercase tracking-[0.28em] text-primary">{draft.id}</p>
                         <p className="text-base font-semibold text-ink">{draft.title}</p>
                       </div>
-                    <Badge variant="muted">{draft.status}</Badge>
+                    <Badge variant={statusStyle[draft.status] ?? "muted"}>{draft.status}</Badge>
                   </div>
-                  <p className="text-sm text-ink">報酬案: {draft.fields["報酬上限額"] ?? "未設定"}</p>
-                  <p className="text-sm text-muted-foreground">リスク: {draft.fields["危険度・同行条件"] ?? "未設定"}</p>
+                  <p className="text-sm text-ink">報酬案: {draft.reward ?? "未設定"}</p>
+                  <p className="text-sm text-muted-foreground">リスク: {draft.risk ?? "未設定"}</p>
                   <p className="text-xs text-muted-foreground">依頼者: {draft.requesterName ?? "未設定"}</p>
                   {draft.status === "合意済み" ? (
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -195,7 +223,6 @@ export default function ReceptionPage() {
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">募集中クエスト（冒険者選定）</CardTitle>
-                <Badge variant="secondary">募集中</Badge>
               </div>
               <CardDescription>募集をかけているクエスト。申請順にレビューし、選定へ進みます。</CardDescription>
             </CardHeader>
@@ -211,7 +238,7 @@ export default function ReceptionPage() {
                         <p className="text-sm font-semibold text-ink">{quest.title}</p>
                         <p className="text-xs text-muted-foreground">報酬: {quest.reward}</p>
                       </div>
-                      <Badge variant="muted">{quest.status}</Badge>
+                      <Badge variant={statusStyle[quest.status] ?? "muted"}>{quest.status}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <p className="text-xs text-muted-foreground">
@@ -236,7 +263,6 @@ export default function ReceptionPage() {
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-ink">クエスト完了確認</CardTitle>
-                <Badge variant="secondary">評価待ち</Badge>
               </div>
               <CardDescription>冒険者の完了報告を確認し、達成確認を行うキューです。</CardDescription>
             </CardHeader>
@@ -252,7 +278,7 @@ export default function ReceptionPage() {
                         <p className="text-sm font-semibold text-ink">{quest.title}</p>
                         <p className="text-xs text-muted-foreground">完了報告受付済み</p>
                       </div>
-                      <Badge variant="muted">評価待ち</Badge>
+                      <Badge variant={statusStyle[quest.status] ?? "muted"}>{quest.status}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{quest.summary}</p>
                     <p className="text-xs text-muted-foreground">

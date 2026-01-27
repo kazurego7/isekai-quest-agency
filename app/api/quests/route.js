@@ -3,8 +3,17 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   const quests = await prisma.quest.findMany({
     orderBy: { createdAt: "desc" },
+    include: {
+      receptionist: true,
+      adventurer: true,
+    },
   });
-  return NextResponse.json({ quests });
+  const payload = quests.map((item) => ({
+    ...item,
+    receptionistName: item.receptionist?.name ?? null,
+    adventurerName: item.adventurer?.name ?? null,
+  }));
+  return NextResponse.json({ quests: payload });
 }
 
 export async function POST(request) {
@@ -40,10 +49,9 @@ export async function POST(request) {
         requestId: sourceRequest.id,
         title: sourceRequest.title,
         status: "募集中",
-        receptionistName: actor.name,
         receptionistId: actor.id,
-        reward: sourceRequest.fields?.["報酬上限額"] ?? null,
-        risk: sourceRequest.fields?.["危険度・同行条件"] ?? null,
+        reward: sourceRequest.reward ?? null,
+        risk: sourceRequest.risk ?? null,
         rank: publishFields.rank ?? null,
         slots: publishFields.slots ?? null,
         detail: publishFields.detail ?? null,
@@ -62,7 +70,6 @@ export async function POST(request) {
       data: {
         status: "クエスト化済み",
         notes: "クエスト化が完了し、冒険者の募集を開始しました。",
-        receptionistName: actor.name,
         receptionistId: actor.id,
       },
     });
@@ -70,5 +77,22 @@ export async function POST(request) {
     return quest;
   });
 
-  return NextResponse.json({ quest: created }, { status: 201 });
+  const loaded = await prisma.quest.findUnique({
+    where: { id: created.id },
+    include: {
+      receptionist: true,
+      adventurer: true,
+    },
+  });
+
+  return NextResponse.json(
+    {
+      quest: {
+        ...loaded,
+        receptionistName: loaded?.receptionist?.name ?? null,
+        adventurerName: loaded?.adventurer?.name ?? null,
+      },
+    },
+    { status: 201 },
+  );
 }

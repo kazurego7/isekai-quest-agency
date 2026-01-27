@@ -3,9 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { useDevUser } from "@/lib/dev-user";
 
-export default function DevUserSelector({ role, roleLabel, helperText }) {
-  const { user, users, userId, selectUser, isEnabled } = useDevUser(role);
-
+export function DevUserSelectorView({
+  user,
+  users,
+  userId,
+  selectUser,
+  isEnabled,
+  roleLabel,
+  helperText,
+}) {
   if (!isEnabled) {
     return null;
   }
@@ -37,5 +43,21 @@ export default function DevUserSelector({ role, roleLabel, helperText }) {
       </div>
       {helperText ? <p className="mt-2 text-xs text-muted-foreground">{helperText}</p> : null}
     </div>
+  );
+}
+
+export default function DevUserSelector({ role, roleLabel, helperText }) {
+  const { user, users, userId, selectUser, isEnabled } = useDevUser(role);
+
+  return (
+    <DevUserSelectorView
+      user={user}
+      users={users}
+      userId={userId}
+      selectUser={selectUser}
+      isEnabled={isEnabled}
+      roleLabel={roleLabel}
+      helperText={helperText}
+    />
   );
 }
