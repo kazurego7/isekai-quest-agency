@@ -61,6 +61,8 @@ model Quest {
   adventurer   User?    @relation("AdventurerQuest", fields: [adventurerId], references: [id])
   // 選定済み冒険者
   selectedAdventurers QuestAdventurer[]
+  // 申請済み冒険者
+  applications        QuestApplication[]
 }
 
 model Adventurer {
@@ -87,6 +89,21 @@ model Adventurer {
 
   // クエスト選定
   questSelections QuestAdventurer[]
+  // クエスト申請
+  questApplications QuestApplication[]
+}
+
+model QuestApplication {
+  // クエスト申請
+  questId      String
+  adventurerId String
+  // 申請日時
+  appliedAt    DateTime @default(now())
+
+  quest      Quest      @relation(fields: [questId], references: [id])
+  adventurer Adventurer @relation(fields: [adventurerId], references: [id])
+
+  @@id([questId, adventurerId])
 }
 
 model QuestAdventurer {

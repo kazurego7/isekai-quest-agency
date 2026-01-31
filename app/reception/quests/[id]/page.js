@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 
 export default function QuestSelectionPage() {
@@ -16,7 +16,7 @@ export default function QuestSelectionPage() {
   const [quest, setQuest] = useState(null);
   const [adventurers, setAdventurers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useDevUser("reception");
+  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
   const [applicantPage, setApplicantPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [activeList, setActiveList] = useState("applicants");
@@ -25,15 +25,14 @@ export default function QuestSelectionPage() {
   // 仮選定中は別ページング
   const [selectedPage, setSelectedPage] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
-  const applicantList = useMemo(
-    () => (adventurers ?? []).filter((item) => item.source === "申請"),
-    [adventurers],
-  );
+  const activeQuest = useMemo(() => quest, [quest]);
+  const applicantList = useMemo(() => activeQuest?.applicants ?? [], [activeQuest]);
+
   const totalAdventurers = adventurers.length;
-
   const applicantTotalPages = Math.max(Math.ceil(applicantList.length / pageSize), 1);
-  const allTotalPages = Math.max(Math.ceil((adventurers ?? []).length / pageSize), 1);
+  const allTotalPages = Math.max(Math.ceil(adventurers.length / pageSize), 1);
 
   const applicantPageItems = useMemo(() => {
     const startIndex = (applicantPage - 1) * pageSize;
@@ -42,12 +41,21 @@ export default function QuestSelectionPage() {
 
   const allPageItems = useMemo(() => {
     const startIndex = (allPage - 1) * pageSize;
-    return (adventurers ?? []).slice(startIndex, startIndex + pageSize);
+    return adventurers.slice(startIndex, startIndex + pageSize);
   }, [adventurers, allPage]);
 
   const adventurerMap = useMemo(() => {
-    return new Map((adventurers ?? []).map((item) => [item.id, item]));
-  }, [adventurers]);
+    const merged = new Map();
+    applicantList.forEach((item) => {
+      if (item?.id) merged.set(item.id, item);
+    });
+    adventurers.forEach((item) => {
+      if (item?.id && !merged.has(item.id)) {
+        merged.set(item.id, item);
+      }
+    });
+    return merged;
+  }, [adventurers, applicantList]);
 
   const selectedAdventurers = useMemo(
     () => selectedIds.map((id) => adventurerMap.get(id)).filter(Boolean),
@@ -59,8 +67,6 @@ export default function QuestSelectionPage() {
     const startIndex = (selectedPage - 1) * pageSize;
     return selectedAdventurers.slice(startIndex, startIndex + pageSize);
   }, [selectedAdventurers, selectedPage]);
-
-  const activeQuest = useMemo(() => quest, [quest]);
 
   const toggleSelection = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -137,6 +143,29 @@ export default function QuestSelectionPage() {
     }
   };
 
+  const handleFinalizeSelection = async () => {
+    if (!activeQuest?.id || !user?.id) return;
+    setIsFinalizing(true);
+    try {
+      const response = await fetch(`/api/quests/${activeQuest.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "finalize-selection",
+          actorId: user?.id,
+          selectedIds,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("選定完了に失敗しました。");
+      }
+      await response.json();
+      window.location.href = "/reception";
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -187,14 +216,15 @@ export default function QuestSelectionPage() {
             <Button size="sm" variant="outline" asChild>
               <Link href="/reception">受付コンソールへ戻る</Link>
             </Button>
-            <Button size="sm" onClick={handleSaveSelection} disabled={isSaving || !user?.id}>
-              {isSaving ? "保存中..." : "選定を保存"}
-            </Button>
           </div>
         </header>
 
-        <DevUserSelector
-          role="reception"
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel="受付"
           helperText="開発用ユーザーを選択すると選定保存が可能になります。"
         />
@@ -207,7 +237,6 @@ export default function QuestSelectionPage() {
                 <CardTitle className="text-lg text-ink">{activeQuest.title}</CardTitle>
                 <CardDescription>募集中クエストの内容を確認して、選定枠を決定します。</CardDescription>
               </div>
-              <Badge variant="secondary">{activeQuest.status}</Badge>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <InfoRow label="受付" value={activeQuest.receptionistName ?? "未設定"} />
@@ -223,7 +252,6 @@ export default function QuestSelectionPage() {
               <InfoRow label="連絡方法" value={activeQuest.channel ?? "未設定"} />
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
-              <Badge variant="muted">選定完了で「クエスト進行」に移動</Badge>
             </CardFooter>
           </Card>
 
@@ -321,55 +349,79 @@ export default function QuestSelectionPage() {
               style={{ scrollbarGutter: "stable" }}
             >
               {activeList === "applicants"
-                ? applicantPageItems.map((applicant) => (
-                    <label
-                      key={applicant.id}
-                      className="flex w-full items-start gap-3 rounded-lg border border-border/70 bg-muted/40 px-4 py-3"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-border/70"
-                        checked={selectedIds.includes(applicant.id)}
-                        onChange={() => toggleSelection(applicant.id)}
-                      />
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
+                ? applicantPageItems.length
+                  ? applicantPageItems.map((applicant) => {
+                      const appliedAt = applicant.appliedAt
+                        ? new Date(applicant.appliedAt).toLocaleString("ja-JP", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "申請日時不明";
+                      return (
+                        <label
+                          key={applicant.id}
+                          className="flex w-full items-start gap-3 rounded-lg border border-border/70 bg-muted/40 px-4 py-3"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-border/70"
+                            checked={selectedIds.includes(applicant.id)}
+                            onChange={() => toggleSelection(applicant.id)}
+                          />
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-ink">
+                                {applicant.name}{" "}
+                                <span className="text-xs text-muted-foreground">({applicant.rank})</span>
+                              </p>
+                              <span className="text-[11px] text-muted-foreground">{appliedAt}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <span>役割: {applicant.role}</span>
+                              <span className="h-3 w-px bg-border" />
+                              <span className="line-clamp-1">{applicant.note}</span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })
+                  : (
+                      <div className="flex min-h-[208px] items-center justify-center rounded-lg border border-dashed border-primary/30 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                        申請済みの冒険者がいません
+                      </div>
+                    )
+                : allPageItems.length
+                  ? allPageItems.map((adventurer) => (
+                      <label
+                        key={adventurer.id}
+                        className="flex w-full items-start gap-3 rounded-lg border border-border/70 bg-muted/40 px-4 py-3"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-border/70"
+                          checked={selectedIds.includes(adventurer.id)}
+                          onChange={() => toggleSelection(adventurer.id)}
+                        />
+                        <div className="flex-1 space-y-2">
                           <p className="text-sm font-semibold text-ink">
-                            {applicant.name} <span className="text-xs text-muted-foreground">({applicant.rank})</span>
+                            {adventurer.name}{" "}
+                            <span className="text-xs text-muted-foreground">({adventurer.rank})</span>
                           </p>
-                          <span className="text-[11px] text-muted-foreground">{applicant.appliedAt}</span>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span>役割: {adventurer.role}</span>
+                            <span className="h-3 w-px bg-border" />
+                            <span className="line-clamp-1">{adventurer.note}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>役割: {applicant.role}</span>
-                          <span className="h-3 w-px bg-border" />
-                          <span className="line-clamp-1">{applicant.note}</span>
-                        </div>
+                      </label>
+                    ))
+                  : (
+                      <div className="flex min-h-[208px] items-center justify-center rounded-lg border border-dashed border-primary/30 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                        登録済みの冒険者がいません
                       </div>
-                    </label>
-                  ))
-                : allPageItems.map((adventurer) => (
-                    <label
-                      key={adventurer.id}
-                      className="flex w-full items-start gap-3 rounded-lg border border-border/70 bg-muted/40 px-4 py-3"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-border/70"
-                        checked={selectedIds.includes(adventurer.id)}
-                        onChange={() => toggleSelection(adventurer.id)}
-                      />
-                      <div className="flex-1 space-y-2">
-                        <p className="text-sm font-semibold text-ink">
-                          {adventurer.name} <span className="text-xs text-muted-foreground">({adventurer.rank})</span>
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>役割: {adventurer.role}</span>
-                          <span className="h-3 w-px bg-border" />
-                          <span className="line-clamp-1">{adventurer.note}</span>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
+                    )}
             </CardContent>
             <CardFooter className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
               {activeList === "applicants" ? (
@@ -420,6 +472,26 @@ export default function QuestSelectionPage() {
             </CardFooter>
           </Card>
         </div>
+
+        <Card className="border border-border/70 bg-white/90 shadow-sm">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-lg text-ink">選定の確定</CardTitle>
+            <CardDescription>依頼内容と参加予定者を確認し、問題がなければ保存または完了します。</CardDescription>
+          </CardHeader>
+          <CardFooter className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={handleSaveSelection} disabled={isSaving || !user?.id}>
+              {isSaving ? "保存中..." : "一時保存"}
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleFinalizeSelection}
+              disabled={isFinalizing || !user?.id || selectedIds.length === 0}
+            >
+              {isFinalizing ? "開始中..." : "クエスト開始"}
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

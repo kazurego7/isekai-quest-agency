@@ -5,13 +5,19 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function QuestReviewClient({ quest, onVerify }) {
+export default function QuestReviewClient({ quest, onVerify, onRemand, canReview }) {
   const [activePhoto, setActivePhoto] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
+  const [remandError, setRemandError] = useState("");
 
   useEffect(() => {
     setReviewNote("");
+    setRemandError("");
   }, [quest.id]);
+
+  const canAction = Boolean(canReview);
+  const trimmedReviewNote = reviewNote.trim();
+  const hasPhotos = quest.photos.length > 0;
 
   return (
     <>
@@ -41,26 +47,32 @@ export default function QuestReviewClient({ quest, onVerify }) {
           ))}
           <div className="space-y-2 pt-2">
             <p className="text-sm font-semibold text-ink">成果写真</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {quest.photos.map((photo) => (
-                <button
-                  key={photo.id}
-                  type="button"
-                  className="group overflow-hidden rounded-lg border border-border/70 bg-muted/30 text-left"
-                  onClick={() => setActivePhoto(photo)}
-                >
-                  <img
-                    src={photo.url ?? "/file.svg"}
-                    alt={photo.label}
-                    className="h-24 w-full object-cover transition group-hover:scale-105"
-                  />
-                  <div className="px-2 py-2 text-xs text-muted-foreground">
-                    <p className="truncate">{photo.label}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">写真をクリックすると拡大表示します（ダミー）。</p>
+            {hasPhotos ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {quest.photos.map((photo, index) => (
+                  <button
+                    key={photo.id ?? `${quest.id}-photo-${index}`}
+                    type="button"
+                    className="group overflow-hidden rounded-lg border border-border/70 bg-muted/30 text-left"
+                    onClick={() => setActivePhoto(photo)}
+                  >
+                    <img
+                      src={photo.url ?? "/file.svg"}
+                      alt={photo.label ?? photo.name ?? "成果写真"}
+                      className="h-24 w-full object-cover transition group-hover:scale-105"
+                    />
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      <p className="truncate">{photo.label ?? photo.name ?? "成果写真"}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                成果写真はまだ登録されていません。
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">写真をクリックすると拡大表示します。</p>
           </div>
         </CardContent>
       </Card>
@@ -81,18 +93,39 @@ export default function QuestReviewClient({ quest, onVerify }) {
             <span className="block text-sm font-semibold text-ink">確認メモ</span>
             <textarea
               className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-              placeholder="確認内容のメモ（ダミー）"
+              placeholder="確認内容のメモ"
               value={reviewNote}
               onChange={(event) => setReviewNote(event.target.value)}
+              readOnly={!canAction}
             />
           </label>
-          <p className="text-xs text-muted-foreground">レビュー後に達成確認を記録します（ダミー）。</p>
+          {remandError ? <p className="text-xs text-red-500">{remandError}</p> : null}
+          <p className="text-xs text-muted-foreground">レビュー後に達成確認を記録します。</p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline">
-            差し戻し（ダミー）
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (!trimmedReviewNote) {
+                setRemandError("差し戻し理由を入力してください。");
+                return;
+              }
+              setRemandError("");
+              onRemand?.(trimmedReviewNote);
+            }}
+            disabled={!canAction}
+          >
+            差し戻し
           </Button>
-          <Button size="sm" onClick={() => onVerify?.(reviewNote)}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setRemandError("");
+              onVerify?.(reviewNote);
+            }}
+            disabled={!canAction}
+          >
             達成確認を記録
           </Button>
         </CardFooter>
@@ -111,11 +144,11 @@ export default function QuestReviewClient({ quest, onVerify }) {
             <div className="overflow-hidden rounded-2xl bg-white">
               <img
                 src={activePhoto.url ?? "/file.svg"}
-                alt={activePhoto.label}
+                alt={activePhoto.label ?? activePhoto.name ?? "成果写真"}
                 className="max-h-[70vh] w-full object-contain"
               />
               <div className="border-t border-border/60 px-4 py-3 text-sm text-muted-foreground">
-                <p className="font-semibold text-ink">{activePhoto.label}</p>
+                <p className="font-semibold text-ink">{activePhoto.label ?? activePhoto.name ?? "成果写真"}</p>
               </div>
             </div>
           </div>

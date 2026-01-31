@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 const publishFieldLabels = [
   { key: "rank", label: "冒険者ランク制限", placeholder: "Bランク以上" },
@@ -16,7 +16,7 @@ const publishFieldLabels = [
   { key: "deliverables", label: "成果物・評価基準", placeholder: "討伐証明部位 + 現地写真。傷/欠損がないこと" },
   { key: "supplies", label: "ギルド支給物", placeholder: "解毒薬2本 / 地図 / 簡易テント / 松明" },
   { key: "mapNotes", label: "地図・注意事項", placeholder: "沼地東側の浅瀬を推奨。夜間は迂回。毒沼に立入禁止" },
-  { key: "channel", label: "連絡方法", placeholder: "ギルドチャット / 緊急時は鐘楼" },
+  { key: "channel", label: "連絡方法", placeholder: "魔法通信 / 緊急時は鐘楼" },
 ];
 
 export default function QuestifyPage() {
@@ -46,7 +46,8 @@ function QuestifyClient() {
   const requestId = searchParams.get("requestId");
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useDevUser("reception");
+  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
+  const [checklistItems, setChecklistItems] = useState([{ label: "", note: "" }]);
   const [publishFields, setPublishFields] = useState(() =>
     publishFieldLabels.reduce((acc, field) => {
       acc[field.key] = "";
@@ -85,12 +86,36 @@ function QuestifyClient() {
     setPublishFields((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updateChecklistItem = (index, key, value) => {
+    setChecklistItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)),
+    );
+  };
+
+  const addChecklistItem = () => {
+    setChecklistItems((prev) => [...prev, { label: "", note: "" }]);
+  };
+
+  const removeChecklistItem = (index) => {
+    setChecklistItems((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
   const handlePublish = () => {
     if (!requestId) return;
     return fetch("/api/quests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, publishFields, actorId: user?.id }),
+      body: JSON.stringify({
+        requestId,
+        publishFields,
+        actorId: user?.id,
+        checklist: checklistItems
+          .map((item) => ({
+            label: String(item.label ?? "").trim(),
+            note: String(item.note ?? "").trim(),
+          }))
+          .filter((item) => item.label),
+      }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("クエスト化に失敗しました。");
@@ -140,7 +165,7 @@ function QuestifyClient() {
         <header className="flex items-center justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Questify</p>
-            <h1 className="font-serif text-2xl text-ink">クエスト化（ダミー）</h1>
+            <h1 className="font-serif text-2xl text-ink">クエスト化</h1>
             <p className="text-sm text-muted-foreground">
               依頼者と合意済みの内容に、冒険者向け公開項目を追加してクエスト票を作成します。
             </p>
@@ -150,8 +175,12 @@ function QuestifyClient() {
           </Button>
         </header>
 
-        <DevUserSelector
-          role="reception"
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel="受付"
           helperText="開発用ユーザーを選択するとクエスト化が可能になります。"
         />
@@ -210,7 +239,7 @@ function QuestifyClient() {
                 <CardTitle className="text-lg text-ink">冒険者向け公開項目</CardTitle>
                 <Badge variant="secondary">公開前に必須</Badge>
               </div>
-              <CardDescription>ランク制限や成果物など、公開文面に載せる追加項目（ダミー入力）</CardDescription>
+              <CardDescription>ランク制限や成果物など、公開文面に載せる追加項目を入力します。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {publishFieldLabels.map((field) => (
@@ -224,6 +253,54 @@ function QuestifyClient() {
                   />
                 </label>
               ))}
+              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/40 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">成果チェックリスト</p>
+                    <p className="text-xs text-muted-foreground">冒険者が完了報告時にチェックする項目です。</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={addChecklistItem}>
+                    追加
+                  </Button>
+                </div>
+                {checklistItems.map((item, index) => (
+                  <div
+                    key={`check-${index}`}
+                    className="space-y-2 rounded-lg border border-border/60 bg-white/80 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">項目 {index + 1}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-muted-foreground"
+                        onClick={() => removeChecklistItem(index)}
+                        disabled={checklistItems.length <= 1}
+                      >
+                        削除
+                      </Button>
+                    </div>
+                    <label className="space-y-1 block">
+                      <span className="text-xs font-semibold text-ink">チェック項目</span>
+                      <input
+                        className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                        placeholder="例: 成果物の写真を提出"
+                        value={item.label}
+                        onChange={(event) => updateChecklistItem(index, "label", event.target.value)}
+                      />
+                    </label>
+                    <label className="space-y-1 block">
+                      <span className="text-xs font-semibold text-ink">補足メモ</span>
+                      <input
+                        className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                        placeholder="例: 提出時に傷がないことを確認"
+                        value={item.note}
+                        onChange={(event) => updateChecklistItem(index, "note", event.target.value)}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
               <Button size="sm" onClick={handlePublish} disabled={!canPublish}>
@@ -242,7 +319,7 @@ function QuestifyClient() {
         <Card className="border-none bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">メモ</CardTitle>
-            <CardDescription>クエスト化すると「合意済み」から「公開済み」に状態が遷移し、冒険者側ダッシュボードに表示されます。（ダミー）</CardDescription>
+            <CardDescription>クエスト化すると「合意済み」から「クエスト化済み」に状態が遷移し、冒険者側ダッシュボードに表示されます。</CardDescription>
           </CardHeader>
         </Card>
       </div>

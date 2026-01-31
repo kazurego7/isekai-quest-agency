@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestDetailClient from "./quest-detail-client";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 
 export default function AdventurerQuestDetail() {
@@ -17,7 +17,7 @@ export default function AdventurerQuestDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
-  const { user } = useDevUser("adventurer");
+  const { user, users, userId, selectUser, isEnabled } = useDevUser("adventurer");
   const hasActor = Boolean(user?.id);
 
   useEffect(() => {
@@ -60,25 +60,45 @@ export default function AdventurerQuestDetail() {
       mapNotes: quest.mapNotes ?? "未設定",
       channel: quest.channel ?? "未設定",
       summary: quest.summary ?? "詳細は受付で確認",
+      applicants: Array.isArray(quest.applicants) ? quest.applicants : [],
+      selectedAdventurerIds: Array.isArray(quest.selectedAdventurerIds)
+        ? quest.selectedAdventurerIds
+        : [],
     };
   }, [quest]);
 
-  const handleAccept = () => {
+  const matchedApplicant = useMemo(() => {
+    if (!normalizedQuest || !user?.name) return null;
+    return normalizedQuest.applicants.find((applicant) => applicant.name === user.name) ?? null;
+  }, [normalizedQuest, user?.name]);
+
+  const isApplied = Boolean(matchedApplicant?.id);
+  const handleApply = () => {
     if (!normalizedQuest?.id || !user?.id) return;
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "accept", actorId: user?.id }),
+      body: JSON.stringify({ mode: "apply", actorId: user?.id }),
     }).then((response) => {
       if (!response.ok) {
-        throw new Error("受注に失敗しました。");
+        throw new Error("申請に失敗しました。");
       }
-      router.push("/adventurer");
+      return fetch(`/api/quests/${normalizedQuest.id}`)
+        .then((nextResponse) => nextResponse.json())
+        .then((data) => {
+          setQuest(data.quest ?? null);
+        });
     });
   };
 
   const handleComplete = (reportComment) => {
     if (!normalizedQuest?.id || !user?.id) return;
+    const normalizedPhotos = (reportComment?.photos ?? []).map((photo, index) => ({
+      id: photo.id ?? `${normalizedQuest.id}-photo-${index}`,
+      label: photo.label ?? photo.name ?? "写真",
+      name: photo.name ?? photo.label ?? "写真",
+      size: photo.size ?? null,
+    }));
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -87,7 +107,7 @@ export default function AdventurerQuestDetail() {
         actorId: user?.id,
         reportComment: reportComment?.comment ?? reportComment ?? "",
         checklist: reportComment?.checklist ?? [],
-        photos: reportComment?.photos ?? [],
+        photos: normalizedPhotos,
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -138,16 +158,20 @@ export default function AdventurerQuestDetail() {
         <header className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adventurer</p>
-            <h1 className="font-serif text-2xl text-ink">クエスト詳細（モック）</h1>
-            <p className="text-sm text-muted-foreground">冒険者が進行状況を入力・確認する想定のダミー画面です。</p>
+            <h1 className="font-serif text-2xl text-ink">クエスト詳細</h1>
+            <p className="text-sm text-muted-foreground">冒険者が進行状況を入力・確認する画面です。</p>
           </div>
           <Button size="sm" variant="outline" asChild>
             <Link href="/adventurer">一覧へ戻る</Link>
           </Button>
         </header>
 
-        <DevUserSelector
-          role="adventurer"
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel="冒険者"
           helperText="開発用ユーザーを選択すると報告や受注が可能になります。"
         />
@@ -176,12 +200,22 @@ export default function AdventurerQuestDetail() {
           </CardContent>
           {normalizedQuest.status === "募集中" ? (
             <CardFooter className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={handleAccept} disabled={!hasActor}>
-                受注する
+              <Button size="sm" onClick={handleApply} disabled={!hasActor || isApplied}>
+                {isApplied ? "申請済み" : "申請する"}
               </Button>
             </CardFooter>
           ) : null}
         </Card>
+
+        {normalizedQuest.reviewNote ? (
+          <Card className="border border-amber-200 bg-amber-50/60 shadow-sm">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg text-ink">差し戻し理由</CardTitle>
+              <CardDescription>受付からの差し戻し内容です。再報告時に確認してください。</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-ink">{normalizedQuest.reviewNote}</CardContent>
+          </Card>
+        ) : null}
 
         <QuestDetailClient quest={normalizedQuest} onComplete={handleComplete} />
       </div>

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function QuestDetailClient({ quest, onComplete }) {
-  const isEditable = quest.status === "受注済み";
-  const canComplete = quest.status === "受注済み";
-  const fieldHint = isEditable ? "受注済みの間だけ編集できます。" : "現在は閲覧のみです。";
+  const isEditable = quest.status === "クエスト進行中";
+  const canComplete = quest.status === "クエスト進行中";
+  const fieldHint = isEditable ? "クエスト進行中の間だけ編集できます。" : "現在は閲覧のみです。";
   const [photoItems, setPhotoItems] = useState([]);
   const [activePreview, setActivePreview] = useState(null);
   const [reportComment, setReportComment] = useState("");
@@ -22,12 +22,30 @@ export default function QuestDetailClient({ quest, onComplete }) {
         checked: Boolean(item.checked),
       })),
     );
-    setPhotoItems(quest.photos ?? []);
+    setPhotoItems(
+      (quest.photos ?? []).map((photo, index) => ({
+        id: photo.id ?? `${quest.id}-photo-${index}`,
+        label: photo.label ?? photo.name ?? "写真",
+        name: photo.name ?? photo.label ?? "写真",
+        size: photo.size ?? null,
+        url: photo.url ?? null,
+      })),
+    );
   }, [quest.id, quest.reportComment, quest.checklist, quest.photos]);
+
+  useEffect(() => {
+    return () => {
+      photoItems.forEach((item) => {
+        if (item.url?.startsWith("blob:")) {
+          URL.revokeObjectURL(item.url);
+        }
+      });
+    };
+  }, [photoItems]);
 
   const photoCountLabel = useMemo(() => {
     if (!photoItems.length) return "写真は未選択";
-    return `${photoItems.length}枚の写真をアップロード済み（ダミー）`;
+    return `${photoItems.length}枚の写真を追加済み`;
   }, [photoItems.length]);
 
   const handlePhotoSelect = (event) => {
@@ -129,7 +147,7 @@ export default function QuestDetailClient({ quest, onComplete }) {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-primary/30 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-                写真を選択すると自動でアップロードします（ダミー）
+                写真を選択すると一覧に追加されます。
               </div>
             )}
             <p className="text-xs text-muted-foreground">{fieldHint}</p>
@@ -147,7 +165,7 @@ export default function QuestDetailClient({ quest, onComplete }) {
             <span className="block text-sm font-semibold text-ink">成果コメント</span>
             <textarea
               className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-              placeholder="成果や注意点を記入（ダミー）"
+              placeholder="成果や注意点を記入"
               value={reportComment}
               onChange={(event) => setReportComment(event.target.value)}
               readOnly={!isEditable}

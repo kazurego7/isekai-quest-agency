@@ -24,6 +24,7 @@ const statusStyle = {
   合意済み: "secondary",
   クエスト化済み: "secondary",
   募集中: "default",
+  クエスト進行中: "secondary",
   完了報告済み: "secondary",
   達成確認済み: "secondary",
 };
@@ -73,7 +74,7 @@ export default function ReceptionPage() {
   }, [requests]);
 
   const questDrafts = useMemo(() => {
-    return (requests ?? []).filter((item) => ["合意済み", "クエスト化済み"].includes(item.status));
+    return (requests ?? []).filter((item) => item.status === "合意済み");
   }, [requests]);
 
   const recruitingQuests = useMemo(() => {
@@ -101,10 +102,10 @@ export default function ReceptionPage() {
         <header className="flex flex-col gap-4 border-b border-primary/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Receptionist</p>
-            <h1 className="font-serif text-3xl text-ink">受付嬢モック（PC向けダミー）</h1>
+            <h1 className="font-serif text-3xl text-ink">受付嬢（PC想定）</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
               依頼のレビュー、調整案の合意、クエスト化までをデスクトップでまとめて操作できます。
-              進行中の依頼を左のキューで確認し、右側でクエスト票の整形やチャット対応を進めます。
+              進行中の依頼を左のキューで確認し、右側でクエスト票の整形や対応を進めます。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -174,7 +175,7 @@ export default function ReceptionPage() {
                 <CardTitle className="text-lg text-ink">公開準備（依頼者と合意済みの内容）</CardTitle>
               </div>
               <CardDescription>
-                冒険者に公開する前に、ランク制限・成果物・ギルド支給物・地図/注意事項を確認します（ダミー）。クエスト化が完了すると即時公開されます。
+                冒険者に公開する前に、ランク制限・成果物・ギルド支給物・地図/注意事項を確認します。クエスト化が完了すると即時公開されます。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid flex-1 content-start grid-cols-1 gap-3 lg:grid-cols-2">

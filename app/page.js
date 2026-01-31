@@ -10,18 +10,18 @@ import {
 
 const roles = [
   {
-    title: "依頼者モック（モバイル想定）",
-    description: "既存の依頼作成・一覧・詳細などのモバイルUI。",
+    title: "依頼者（モバイル想定）",
+    description: "依頼作成・一覧・詳細などのモバイルUI。",
     href: "/requests",
   },
   {
-    title: "受付嬢モック（PC向けダミー）",
+    title: "受付嬢（PC想定）",
     description: "PC操作で依頼キュー、クエスト下書き、チェックをまとめて確認。",
     href: "/reception",
   },
   {
-    title: "冒険者モック（ダッシュボード）",
-    description: "クエスト受注・進行確認のダミー画面。",
+    title: "冒険者（ダッシュボード）",
+    description: "クエスト受注・進行確認の画面です。",
     href: "/adventurer",
   },
 ];
@@ -35,10 +35,10 @@ export default function Home() {
             異
           </span>
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">Mock</p>
-            <h1 className="font-serif text-2xl">ロール別モック選択</h1>
+            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">Role</p>
+            <h1 className="font-serif text-2xl">ロール別画面選択</h1>
             <p className="text-sm text-muted-foreground">
-              トップページはモックのハブとして利用します。各担当者向けの画面へ遷移してください。
+              担当者ごとの画面へ遷移できます。
             </p>
           </div>
         </header>
@@ -46,7 +46,7 @@ export default function Home() {
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">担当者を選択</CardTitle>
-            <CardDescription>モック用の画面に飛び、役割ごとのUIを確認できます。</CardDescription>
+            <CardDescription>役割ごとの画面へ移動できます。</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {roles.map((role) => (

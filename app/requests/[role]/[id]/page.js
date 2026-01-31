@@ -33,6 +33,7 @@ const statusStyle = {
   確認前: "secondary",
   下書き: "outline",
   受注済み: "muted",
+  クエスト進行中: "muted",
   完了: "muted",
   合意済み: "secondary",
   クエスト化済み: "secondary",
@@ -59,6 +60,8 @@ function actionsByStatus(status) {
     case "合意済み":
       return [{ label: "合意済み", href: "/requests", variant: "ghost" }];
     case "受注済み":
+      return [{ label: "参照のみ", href: "/requests", variant: "ghost" }];
+    case "クエスト進行中":
       return [{ label: "参照のみ", href: "/requests", variant: "ghost" }];
     case "完了":
       return [{ label: "完了済みの履歴", href: "/requests", variant: "ghost" }];

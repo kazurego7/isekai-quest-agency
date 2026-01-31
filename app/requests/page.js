@@ -20,6 +20,7 @@ const statusStyle = {
   確認前: "secondary",
   下書き: "outline",
   受注済み: "muted",
+  クエスト進行中: "muted",
   完了: "muted",
   合意済み: "secondary",
   クエスト化済み: "secondary",
@@ -79,7 +80,7 @@ export default function RequestsPage() {
         <header className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Requests</p>
-            <h1 className="font-serif text-2xl">依頼者モック（モバイル想定）</h1>
+            <h1 className="font-serif text-2xl">依頼者（モバイル想定）</h1>
           </div>
           <Button asChild size="sm">
             <Link href="/requests/new">新規依頼</Link>

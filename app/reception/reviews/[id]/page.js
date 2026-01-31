@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestReviewClient from "./quest-review-client";
-import DevUserSelector from "@/components/dev-user-selector";
+import { DevUserSelectorView } from "@/components/dev-user-selector";
 import { useDevUser } from "@/lib/dev-user";
 
 export default function ReceptionReviewDetail() {
@@ -17,7 +17,7 @@ export default function ReceptionReviewDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
-  const { user } = useDevUser("reception");
+  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
 
   useEffect(() => {
     if (!id) return;
@@ -53,6 +53,8 @@ export default function ReceptionReviewDetail() {
     };
   }, [quest]);
 
+  const canReview = normalizedQuest?.status === "完了報告済み" && Boolean(user?.id);
+
   const handleVerify = (reviewNote) => {
     if (!normalizedQuest?.id || !user?.id) return;
     return fetch(`/api/quests/${normalizedQuest.id}`, {
@@ -67,6 +69,19 @@ export default function ReceptionReviewDetail() {
     });
   };
 
+  const handleRemand = (reviewNote) => {
+    if (!normalizedQuest?.id || !user?.id) return;
+    return fetch(`/api/quests/${normalizedQuest.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "remand", reviewNote, actorId: user?.id }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("差し戻しに失敗しました。");
+      }
+      router.push("/reception");
+    });
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/70">
@@ -108,7 +123,7 @@ export default function ReceptionReviewDetail() {
         <header className="flex flex-col gap-4 border-b border-primary/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Receptionist</p>
-            <h1 className="font-serif text-3xl text-ink">クエスト完了確認（モック）</h1>
+            <h1 className="font-serif text-3xl text-ink">クエスト完了確認</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
               冒険者から提出された成果物を確認し、達成確認を記録するための画面です。
             </p>
@@ -120,8 +135,12 @@ export default function ReceptionReviewDetail() {
           </div>
         </header>
 
-        <DevUserSelector
-          role="reception"
+        <DevUserSelectorView
+          user={user}
+          users={users}
+          userId={userId}
+          selectUser={selectUser}
+          isEnabled={isEnabled}
           roleLabel="受付"
           helperText="開発用ユーザーを選択すると達成確認の記録に使われます。"
         />
@@ -151,7 +170,12 @@ export default function ReceptionReviewDetail() {
             </CardContent>
           </Card>
 
-          <QuestReviewClient quest={normalizedQuest} onVerify={handleVerify} />
+          <QuestReviewClient
+            quest={normalizedQuest}
+            onVerify={handleVerify}
+            onRemand={handleRemand}
+            canReview={canReview}
+          />
         </section>
       </div>
     </div>

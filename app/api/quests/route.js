@@ -1,17 +1,43 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const userId = String(searchParams.get("userId") ?? "").trim();
+  const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+  const adventurer =
+    user && user.role === "adventurer"
+      ? await prisma.adventurer.findFirst({ where: { name: user.name } })
+      : null;
+
   const quests = await prisma.quest.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       receptionist: true,
       adventurer: true,
+      selectedAdventurers: true,
+      applications: adventurer
+        ? {
+            where: { adventurerId: adventurer.id },
+            include: { adventurer: true },
+          }
+        : false,
     },
   });
   const payload = quests.map((item) => ({
     ...item,
     receptionistName: item.receptionist?.name ?? null,
     adventurerName: item.adventurer?.name ?? null,
+    selectedAdventurerIds: (item.selectedAdventurers ?? []).map((entry) => entry.adventurerId),
+    applicants: (item.applications ?? []).map((application) => ({
+      id: application.adventurer?.id,
+      name: application.adventurer?.name ?? "未設定",
+      rank: application.adventurer?.rank ?? "未設定",
+      role: application.adventurer?.role ?? "未設定",
+      note: application.adventurer?.note ?? "",
+      source: application.adventurer?.source ?? "申請",
+      appliedAt: application.appliedAt,
+    })),
+    viewerAdventurerId: adventurer?.id ?? null,
   }));
   return NextResponse.json({ quests: payload });
 }
@@ -20,6 +46,7 @@ export async function POST(request) {
   const payload = await request.json();
   const requestId = payload.requestId;
   const publishFields = payload.publishFields ?? {};
+  const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
   const actorId = String(payload.actorId || "").trim();
 
   if (!requestId) {
@@ -60,7 +87,11 @@ export async function POST(request) {
         mapNotes: publishFields.mapNotes ?? null,
         channel: publishFields.channel ?? null,
         summary: "受付がクエスト票を作成済み。募集中。",
-        checklist: [],
+        checklist: checklist.map((item) => ({
+          label: String(item.label ?? "").trim(),
+          note: String(item.note ?? "").trim(),
+          checked: false,
+        })),
         photos: [],
       },
     });
