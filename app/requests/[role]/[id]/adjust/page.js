@@ -53,22 +53,15 @@ export default function AdjustPage() {
   const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
   const { user, isLoading: isUserLoading } = useSessionUser();
   const requesterId = roleForLinks === "requester" && role !== "reception" ? user?.id : "";
+  const shouldSelectRequester = roleForLinks === "requester" && !isUserLoading && !requesterId;
   const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!requestId) return;
     if (roleForLinks === "requester") {
-      if (isUserLoading) {
-        return;
-      }
-      if (!requesterId) {
-        setCurrentRequest(null);
-        setIsLoading(false);
-        return;
-      }
+      if (isUserLoading || !requesterId) return;
     }
     let active = true;
-    setIsLoading(true);
     const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
     if (activeAbortRef.current) {
       activeAbortRef.current.abort();
@@ -98,38 +91,41 @@ export default function AdjustPage() {
 
   const [suggestedFields, setSuggestedFields] = useState(() => emptyDraft.suggested);
   const [reason, setReason] = useState(emptyDraft.reason);
+  const activeRequest = shouldSelectRequester ? null : currentRequest;
 
   const draft = useMemo(() => {
-    if (currentRequest) {
+    if (activeRequest) {
       return {
-        title: currentRequest.title,
-        before: currentRequest ?? {},
-        suggested: currentRequest ?? {},
+        title: activeRequest.title,
+        before: activeRequest ?? {},
+        suggested: activeRequest ?? {},
         reason: "調整の理由を記載",
       };
     }
     return emptyDraft;
-  }, [currentRequest]);
+  }, [activeRequest]);
 
   useEffect(() => {
-    setSuggestedFields(draft.suggested);
-    setReason(draft.reason);
+    Promise.resolve().then(() => {
+      setSuggestedFields(draft.suggested);
+      setReason(draft.reason);
+    });
   }, [draft]);
 
   const inferredAgreement = useMemo(() => {
-    if (!currentRequest) {
+    if (!activeRequest) {
       return { requesterAgreed: false, receptionistAgreed: false };
     }
     return {
-      requesterAgreed: Boolean(currentRequest.requesterAgreed),
-      receptionistAgreed: Boolean(currentRequest.receptionistAgreed),
+      requesterAgreed: Boolean(activeRequest.requesterAgreed),
+      receptionistAgreed: Boolean(activeRequest.receptionistAgreed),
     };
-  }, [currentRequest]);
+  }, [activeRequest]);
 
   const isLocked =
     roleForLinks === "reception" ? inferredAgreement.receptionistAgreed : inferredAgreement.requesterAgreed;
   const hasActor = Boolean(user?.id);
-  const canSubmit = Boolean(currentRequest) && !isLocked && isRoleValid && hasActor;
+  const canSubmit = Boolean(activeRequest) && !isLocked && isRoleValid && hasActor;
 
   const handleFieldChange = (key, value) => {
     setSuggestedFields((prev) => ({ ...prev, [key]: value }));
@@ -161,7 +157,13 @@ export default function AdjustPage() {
     });
   };
 
-  if (isLoading) {
+  const effectiveIsLoading = shouldSelectRequester
+    ? false
+    : roleForLinks === "requester" && isUserLoading
+      ? true
+      : isLoading;
+
+  if (effectiveIsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
@@ -176,7 +178,7 @@ export default function AdjustPage() {
     );
   }
 
-  if (!currentRequest) {
+  if (!activeRequest) {
     if (roleForLinks === "requester" && !requesterId) {
       return (
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">

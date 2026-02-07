@@ -85,22 +85,15 @@ export default function RequestDetail() {
   const listHref = role === "reception" ? "/reception" : "/requests";
   const { user, isLoading: isUserLoading } = useSessionUser();
   const requesterId = roleForLinks === "requester" && role !== "reception" ? user?.id : "";
+  const shouldSelectRequester = roleForLinks === "requester" && !isUserLoading && !requesterId;
   const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!id) return;
     if (roleForLinks === "requester") {
-      if (isUserLoading) {
-        return;
-      }
-      if (!requesterId) {
-        setCurrentRequest(null);
-        setIsLoading(false);
-        return;
-      }
+      if (isUserLoading || !requesterId) return;
     }
     let active = true;
-    setIsLoading(true);
     const query = requesterId ? `?requesterId=${encodeURIComponent(requesterId)}` : "";
     if (activeAbortRef.current) {
       activeAbortRef.current.abort();
@@ -128,7 +121,12 @@ export default function RequestDetail() {
     };
   }, [id, isUserLoading, requesterId, roleForLinks]);
 
-  const request = useMemo(() => currentRequest, [currentRequest]);
+  const request = useMemo(() => (shouldSelectRequester ? null : currentRequest), [currentRequest, shouldSelectRequester]);
+  const effectiveIsLoading = shouldSelectRequester
+    ? false
+    : roleForLinks === "requester" && isUserLoading
+      ? true
+      : isLoading;
   const hasActor = Boolean(user?.id);
 
   const agreement = useMemo(
@@ -183,14 +181,16 @@ export default function RequestDetail() {
 
   useEffect(() => {
     if (!request || !isDraft) return;
-    setDraftFields({
-      title: request.title ?? "",
-      purpose: request.purpose ?? "",
-      location: request.location ?? "",
-      deadline: request.deadline ?? "",
-      risk: request.risk ?? "",
-      reward: request.reward ?? "",
-      requesterNote: request.requesterNote ?? "",
+    Promise.resolve().then(() => {
+      setDraftFields({
+        title: request.title ?? "",
+        purpose: request.purpose ?? "",
+        location: request.location ?? "",
+        deadline: request.deadline ?? "",
+        risk: request.risk ?? "",
+        reward: request.reward ?? "",
+        requesterNote: request.requesterNote ?? "",
+      });
     });
   }, [request, isDraft]);
 
@@ -245,7 +245,7 @@ export default function RequestDetail() {
     }
   };
 
-  if (isLoading) {
+  if (effectiveIsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">

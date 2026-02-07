@@ -18,7 +18,7 @@ export async function GET(request) {
   const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
   const adventurer =
     user && user.userType === "general"
-      ? await prisma.adventurer.findFirst({ where: { name: user.name } })
+      ? await prisma.adventurer.findUnique({ where: { userId: user.id } })
       : null;
 
   const quests = await prisma.quest.findMany({
@@ -30,19 +30,25 @@ export async function GET(request) {
       applications: adventurer
         ? {
             where: { adventurerId: adventurer.id },
-            include: { adventurer: true },
+            include: {
+              adventurer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
           }
         : false,
     },
   });
   const payload = quests.map((item) => ({
     ...item,
-    receptionistName: item.receptionist?.name ?? null,
-    adventurerName: item.adventurer?.name ?? null,
+    receptionistName: item.receptionist?.displayName ?? null,
+    adventurerName: item.adventurer?.displayName ?? null,
     selectedAdventurerIds: (item.selectedAdventurers ?? []).map((entry) => entry.adventurerId),
     applicants: (item.applications ?? []).map((application) => ({
       id: application.adventurer?.id,
-      name: application.adventurer?.name ?? "未設定",
+      name: application.adventurer?.user?.displayName ?? application.adventurer?.name ?? "未設定",
       rank: application.adventurer?.rank ?? "未設定",
       role: application.adventurer?.role ?? "未設定",
       note: application.adventurer?.note ?? "",
@@ -134,8 +140,8 @@ export async function POST(request) {
     {
       quest: {
         ...loaded,
-        receptionistName: loaded?.receptionist?.name ?? null,
-        adventurerName: loaded?.adventurer?.name ?? null,
+        receptionistName: loaded?.receptionist?.displayName ?? null,
+        adventurerName: loaded?.adventurer?.displayName ?? null,
       },
     },
     { status: 201 },

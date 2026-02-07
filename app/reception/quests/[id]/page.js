@@ -74,7 +74,6 @@ export default function QuestSelectionPage() {
   useEffect(() => {
     if (!questId) return;
     let active = true;
-    setIsLoading(true);
     Promise.all([fetch(`/api/quests/${questId}`), fetch("/api/adventurers")])
       .then(async ([questResponse, adventurerResponse]) => {
         const questData = await questResponse.json();
@@ -102,12 +101,16 @@ export default function QuestSelectionPage() {
     const stored = Array.isArray(activeQuest.selectedAdventurerIds)
       ? activeQuest.selectedAdventurerIds
       : [];
-    setSelectedIds(stored);
+    Promise.resolve().then(() => {
+      setSelectedIds(stored);
+    });
   }, [activeQuest]);
 
   useEffect(() => {
     if (selectedPage > selectedTotalPages) {
-      setSelectedPage(selectedTotalPages);
+      Promise.resolve().then(() => {
+        setSelectedPage(selectedTotalPages);
+      });
     }
   }, [selectedPage, selectedTotalPages]);
 

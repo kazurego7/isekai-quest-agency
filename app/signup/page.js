@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export default function SignupPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [userId, setUserId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
@@ -32,7 +33,7 @@ export default function SignupPage() {
     const response = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, password }),
+      body: JSON.stringify({ userId, displayName, password }),
     });
     setIsSubmitting(false);
 
@@ -58,20 +59,36 @@ export default function SignupPage() {
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">アカウント作成</CardTitle>
-            <CardDescription>ユーザー名とパスワードを設定してください。</CardDescription>
+            <CardDescription>ユーザーID・表示名・パスワードを設定してください。</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-1">
-                <label htmlFor="name" className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  ユーザー名
+                <label htmlFor="userId" className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  ユーザーID
                 </label>
                 <input
-                  id="name"
+                  id="userId"
                   className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  value={userId}
+                  onChange={(event) => setUserId(event.target.value)}
+                  placeholder="例: requester_a"
                   autoComplete="username"
+                  pattern="[a-zA-Z0-9_-]{3,32}"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="displayName" className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  表示名
+                </label>
+                <input
+                  id="displayName"
+                  className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="例: 依頼者A"
+                  maxLength={50}
                   required
                 />
               </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,29 +10,23 @@ export default function QuestDetailClient({ quest, onComplete }) {
   const isEditable = quest.status === "クエスト進行中";
   const canComplete = quest.status === "クエスト進行中";
   const fieldHint = isEditable ? "クエスト進行中の間だけ編集できます。" : "現在は閲覧のみです。";
-  const [photoItems, setPhotoItems] = useState([]);
+  const [photoItems, setPhotoItems] = useState(() =>
+    (quest.photos ?? []).map((photo, index) => ({
+      id: photo.id ?? `${quest.id}-photo-${index}`,
+      label: photo.label ?? photo.name ?? "写真",
+      name: photo.name ?? photo.label ?? "写真",
+      size: photo.size ?? null,
+      url: photo.url ?? null,
+    })),
+  );
   const [activePreview, setActivePreview] = useState(null);
-  const [reportComment, setReportComment] = useState("");
-  const [checklistItems, setChecklistItems] = useState([]);
-
-  useEffect(() => {
-    setReportComment(quest.reportComment ?? "");
-    setChecklistItems(
-      (quest.checklist ?? []).map((item) => ({
-        ...item,
-        checked: Boolean(item.checked),
-      })),
-    );
-    setPhotoItems(
-      (quest.photos ?? []).map((photo, index) => ({
-        id: photo.id ?? `${quest.id}-photo-${index}`,
-        label: photo.label ?? photo.name ?? "写真",
-        name: photo.name ?? photo.label ?? "写真",
-        size: photo.size ?? null,
-        url: photo.url ?? null,
-      })),
-    );
-  }, [quest.id, quest.reportComment, quest.checklist, quest.photos]);
+  const [reportComment, setReportComment] = useState(() => quest.reportComment ?? "");
+  const [checklistItems, setChecklistItems] = useState(() =>
+    (quest.checklist ?? []).map((item) => ({
+      ...item,
+      checked: Boolean(item.checked),
+    })),
+  );
 
   useEffect(() => {
     return () => {
@@ -132,9 +127,12 @@ export default function QuestDetailClient({ quest, onComplete }) {
                       className="block w-full"
                       onClick={() => setActivePreview(photo)}
                     >
-                      <img
+                      <Image
                         src={photo.url ?? "/file.svg"}
                         alt={photo.name ?? photo.label}
+                        width={320}
+                        height={224}
+                        unoptimized
                         className="h-28 w-full object-cover transition group-hover:scale-105"
                       />
                     </button>
@@ -201,9 +199,12 @@ export default function QuestDetailClient({ quest, onComplete }) {
               閉じる
             </button>
             <div className="overflow-hidden rounded-2xl bg-white">
-              <img
+              <Image
                 src={activePreview.url ?? "/file.svg"}
                 alt={activePreview.name ?? activePreview.label}
+                width={1200}
+                height={900}
+                unoptimized
                 className="max-h-[70vh] w-full object-contain"
               />
               <div className="border-t border-border/60 px-4 py-3 text-sm text-muted-foreground">

@@ -24,7 +24,7 @@ export default async function SessionToolbar() {
           <div className="min-w-0 text-right">
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">ログイン中</p>
             <p className="truncate text-xs text-ink">
-            {roleLabelMap[user.role] ?? "不明"} / {user.name ?? "ユーザー"}
+              {roleLabelMap[user.role] ?? "不明"} / {user.displayName ?? user.name ?? "ユーザー"}
             </p>
           </div>
           <LogoutButton />

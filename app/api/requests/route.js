@@ -40,8 +40,8 @@ export async function GET(request) {
 
   const payload = requests.map((item) => ({
     ...item,
-    requesterName: item.requester?.name ?? null,
-    receptionistName: item.receptionist?.name ?? null,
+    requesterName: item.requester?.displayName ?? null,
+    receptionistName: item.receptionist?.displayName ?? null,
   }));
 
   return NextResponse.json({ requests: payload });
@@ -105,8 +105,8 @@ export async function POST(request) {
       {
         request: {
           ...created,
-          requesterName: created.requester?.name ?? null,
-          receptionistName: created.receptionist?.name ?? null,
+          requesterName: created.requester?.displayName ?? null,
+          receptionistName: created.receptionist?.displayName ?? null,
         },
       },
       { status: 201 },
@@ -142,8 +142,8 @@ export async function POST(request) {
     {
       request: {
         ...created,
-        requesterName: created.requester?.name ?? null,
-        receptionistName: created.receptionist?.name ?? null,
+        requesterName: created.requester?.displayName ?? null,
+        receptionistName: created.receptionist?.displayName ?? null,
       },
     },
     { status: 201 },

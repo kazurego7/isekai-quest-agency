@@ -42,16 +42,10 @@ export default function RequestsPage() {
   const { user, isLoading: isUserLoading } = useSessionUser();
 
   useEffect(() => {
-    if (isUserLoading) {
-      return;
-    }
-    if (!user?.id) {
-      setRequests([]);
-      setIsLoading(false);
+    if (isUserLoading || !user?.id) {
       return;
     }
     let active = true;
-    setIsLoading(true);
     fetch("/api/requests")
       .then((response) => response.json())
       .then((data) => {
@@ -76,6 +70,8 @@ export default function RequestsPage() {
       return String(b.createdAt).localeCompare(String(a.createdAt));
     });
   }, [requests]);
+  const effectiveIsLoading = isUserLoading ? true : user?.id ? isLoading : false;
+  const effectiveRequests = user?.id ? sortedRequests : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
@@ -94,15 +90,15 @@ export default function RequestsPage() {
         </header>
 
         <div className="space-y-3">
-          {isLoading ? (
+          {effectiveIsLoading ? (
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
                 <CardDescription>依頼一覧を取得しています。</CardDescription>
               </CardHeader>
             </Card>
-          ) : sortedRequests.length ? (
-            sortedRequests.map((req) => {
+          ) : effectiveRequests.length ? (
+            effectiveRequests.map((req) => {
               const viewStatus = deriveViewStatus({
                 status: req.status,
                 requesterAgreed: Boolean(req.requesterAgreed),

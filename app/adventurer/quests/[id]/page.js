@@ -23,7 +23,6 @@ export default function AdventurerQuestDetail() {
   useEffect(() => {
     if (!id) return;
     let active = true;
-    setIsLoading(true);
     fetch(`/api/quests/${id}`)
       .then((response) => response.json())
       .then((data) => {
@@ -64,13 +63,14 @@ export default function AdventurerQuestDetail() {
       selectedAdventurerIds: Array.isArray(quest.selectedAdventurerIds)
         ? quest.selectedAdventurerIds
         : [],
+      viewerAdventurerId: quest.viewerAdventurerId ?? null,
     };
   }, [quest]);
 
   const matchedApplicant = useMemo(() => {
-    if (!normalizedQuest || !user?.name) return null;
-    return normalizedQuest.applicants.find((applicant) => applicant.name === user.name) ?? null;
-  }, [normalizedQuest, user?.name]);
+    if (!normalizedQuest?.viewerAdventurerId) return null;
+    return normalizedQuest.applicants.find((applicant) => applicant.id === normalizedQuest.viewerAdventurerId) ?? null;
+  }, [normalizedQuest]);
 
   const isApplied = Boolean(matchedApplicant?.id);
   const handleApply = () => {
@@ -209,7 +209,11 @@ export default function AdventurerQuestDetail() {
           </Card>
         ) : null}
 
-        <QuestDetailClient quest={normalizedQuest} onComplete={handleComplete} />
+        <QuestDetailClient
+          key={`${normalizedQuest.id}-${normalizedQuest.updatedAt ?? ""}`}
+          quest={normalizedQuest}
+          onComplete={handleComplete}
+        />
       </div>
     </div>
   );

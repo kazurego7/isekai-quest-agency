@@ -52,8 +52,8 @@ export async function GET(_request, context) {
   return NextResponse.json({
     request: {
       ...request,
-      requesterName: request.requester?.name ?? null,
-      receptionistName: request.receptionist?.name ?? null,
+      requesterName: request.requester?.displayName ?? null,
+      receptionistName: request.receptionist?.displayName ?? null,
     },
   });
 }
@@ -123,8 +123,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       request: {
         ...updated,
-        requesterName: updated.requester?.name ?? null,
-        receptionistName: updated.receptionist?.name ?? null,
+        requesterName: updated.requester?.displayName ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
       },
     });
   }
@@ -168,8 +168,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       request: {
         ...updated,
-        requesterName: updated.requester?.name ?? null,
-        receptionistName: updated.receptionist?.name ?? null,
+        requesterName: updated.requester?.displayName ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
       },
     });
   }
@@ -220,8 +220,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       request: {
         ...updated,
-        requesterName: updated.requester?.name ?? null,
-        receptionistName: updated.receptionist?.name ?? null,
+        requesterName: updated.requester?.displayName ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
       },
     });
   }
@@ -263,8 +263,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       request: {
         ...updated,
-        requesterName: updated.requester?.name ?? null,
-        receptionistName: updated.receptionist?.name ?? null,
+        requesterName: updated.requester?.displayName ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
       },
     });
   }

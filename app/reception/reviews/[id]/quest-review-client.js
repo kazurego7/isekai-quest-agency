@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +10,6 @@ export default function QuestReviewClient({ quest, onVerify, onRemand, canReview
   const [activePhoto, setActivePhoto] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [remandError, setRemandError] = useState("");
-
-  useEffect(() => {
-    setReviewNote("");
-    setRemandError("");
-  }, [quest.id]);
 
   const canAction = Boolean(canReview);
   const trimmedReviewNote = reviewNote.trim();
@@ -56,9 +52,12 @@ export default function QuestReviewClient({ quest, onVerify, onRemand, canReview
                     className="group overflow-hidden rounded-lg border border-border/70 bg-muted/30 text-left"
                     onClick={() => setActivePhoto(photo)}
                   >
-                    <img
+                    <Image
                       src={photo.url ?? "/file.svg"}
                       alt={photo.label ?? photo.name ?? "成果写真"}
+                      width={320}
+                      height={192}
+                      unoptimized
                       className="h-24 w-full object-cover transition group-hover:scale-105"
                     />
                     <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -142,9 +141,12 @@ export default function QuestReviewClient({ quest, onVerify, onRemand, canReview
               閉じる
             </button>
             <div className="overflow-hidden rounded-2xl bg-white">
-              <img
+              <Image
                 src={activePhoto.url ?? "/file.svg"}
                 alt={activePhoto.label ?? activePhoto.name ?? "成果写真"}
+                width={1200}
+                height={900}
+                unoptimized
                 className="max-h-[70vh] w-full object-contain"
               />
               <div className="border-t border-border/60 px-4 py-3 text-sm text-muted-foreground">

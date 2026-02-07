@@ -57,7 +57,6 @@ function QuestifyClient() {
   useEffect(() => {
     if (!requestId) return;
     let active = true;
-    setIsLoading(true);
     fetch(`/api/requests/${requestId}`)
       .then((response) => response.json())
       .then((data) => {

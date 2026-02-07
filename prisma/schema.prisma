@@ -68,6 +68,8 @@ model Quest {
 model Adventurer {
   // 冒険者マスタ
   id        String   @id @default(uuid())
+  // 連携ユーザーID
+  userId    String?  @unique
   // 管理コード
   code      String   @unique
   // 冒険者名
@@ -91,6 +93,8 @@ model Adventurer {
   questSelections QuestAdventurer[]
   // クエスト申請
   questApplications QuestApplication[]
+  // 連携ユーザー
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model QuestApplication {
@@ -126,8 +130,12 @@ model User {
   userType  String
   // ロール（staff の場合は reception）
   role      String
-  // ログイン名（一意）
-  name      String   @unique
+  // ログインID（一意）
+  userId    String   @unique
+  // 表示名
+  displayName String
+  // 旧ログイン名（移行期間のみ保持）
+  name      String?
   // パスワードハッシュ
   passwordHash String
   // 作成日時
@@ -143,6 +151,8 @@ model User {
   receptionistQuests Quest[] @relation("ReceptionistQuest")
   // 冒険者としてのクエスト
   adventurerQuests   Quest[] @relation("AdventurerQuest")
+  // 冒険者プロフィール
+  adventurerProfile Adventurer?
 }
 
 model Request {

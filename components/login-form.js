@@ -32,7 +32,7 @@ export default function LoginForm() {
     setIsSubmitting(false);
 
     if (!result || result.error) {
-      setError("ログインに失敗しました。ユーザー名またはパスワードを確認してください。");
+      setError("ログインに失敗しました。ユーザーIDまたはパスワードを確認してください。");
       return;
     }
 
@@ -44,7 +44,7 @@ export default function LoginForm() {
     <Card className="border border-primary/15 bg-white/90 shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg">ログイン</CardTitle>
-        <CardDescription>ユーザー名とパスワードを入力してください。</CardDescription>
+        <CardDescription>ユーザーIDとパスワードを入力してください。</CardDescription>
       </CardHeader>
       <CardContent>
         {registered ? (
@@ -55,14 +55,14 @@ export default function LoginForm() {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-1">
             <label htmlFor="loginId" className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-              ユーザー名
+              ユーザーID
             </label>
             <input
               id="loginId"
               className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
               value={loginId}
               onChange={(event) => setLoginId(event.target.value)}
-              placeholder="例: 依頼者A"
+              placeholder="例: requester_a"
               autoComplete="username"
               required
             />

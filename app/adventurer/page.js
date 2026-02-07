@@ -17,7 +17,6 @@ export default function AdventurerDashboard() {
   useEffect(() => {
     if (isUserLoading) return;
     let active = true;
-    setIsLoading(true);
     fetch("/api/quests")
       .then((response) => response.json())
       .then((data) => {

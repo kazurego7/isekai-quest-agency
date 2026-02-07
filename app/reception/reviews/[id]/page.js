@@ -21,7 +21,6 @@ export default function ReceptionReviewDetail() {
   useEffect(() => {
     if (!id) return;
     let active = true;
-    setIsLoading(true);
     fetch(`/api/quests/${id}`)
       .then((response) => response.json())
       .then((data) => {
@@ -160,6 +159,7 @@ export default function ReceptionReviewDetail() {
           </Card>
 
           <QuestReviewClient
+            key={`${normalizedQuest.id}-${normalizedQuest.updatedAt ?? ""}`}
             quest={normalizedQuest}
             onVerify={handleVerify}
             onRemand={handleRemand}

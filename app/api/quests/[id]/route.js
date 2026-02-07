@@ -5,15 +5,16 @@ import { authOptions } from "@/lib/auth-options";
 import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 
 const ensureAdventurerForUser = async (user) => {
-  if (!user?.name) return null;
-  const existing = await prisma.adventurer.findFirst({
-    where: { name: user.name },
+  if (!user?.id) return null;
+  const existing = await prisma.adventurer.findUnique({
+    where: { userId: user.id },
   });
   if (existing) return existing;
   return prisma.adventurer.create({
     data: {
+      userId: user.id,
       code: `ADV-${String(Date.now()).slice(-6)}`,
-      name: user.name,
+      name: user.displayName || "未設定",
       rank: "Cランク",
       role: "未設定",
       note: "ユーザー申請から作成",
@@ -23,6 +24,8 @@ const ensureAdventurerForUser = async (user) => {
   });
 };
 export async function GET(_request, context) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
   const { params } = context;
   const { id } = (await params) ?? {};
   if (!id) {
@@ -42,24 +45,33 @@ export async function GET(_request, context) {
       selectedAdventurers: true,
       applications: {
         include: {
-          adventurer: true,
+          adventurer: {
+            include: {
+              user: true,
+            },
+          },
         },
         orderBy: { appliedAt: "desc" },
       },
     },
   });
+  const viewerAdventurer =
+    actor && isGeneralUser(actor)
+      ? await prisma.adventurer.findUnique({ where: { userId: actor.id } })
+      : null;
 
   return NextResponse.json({
     quest: {
       ...loaded,
-      receptionistName: loaded?.receptionist?.name ?? null,
-      adventurerName: loaded?.adventurer?.name ?? null,
+      receptionistName: loaded?.receptionist?.displayName ?? null,
+      adventurerName: loaded?.adventurer?.displayName ?? null,
+      viewerAdventurerId: viewerAdventurer?.id ?? null,
       selectedAdventurerIds: (loaded?.selectedAdventurers ?? []).map((item) => item.adventurerId),
       applicants: (loaded?.applications ?? [])
         .filter((application) => application.adventurer)
         .map((application) => ({
           id: application.adventurer.id,
-          name: application.adventurer.name ?? "未設定",
+          name: application.adventurer.user?.displayName ?? application.adventurer.name ?? "未設定",
           rank: application.adventurer.rank ?? "未設定",
           role: application.adventurer.role ?? "未設定",
           note: application.adventurer.note ?? "",
@@ -171,8 +183,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });
@@ -206,8 +218,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });
@@ -250,8 +262,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });
@@ -280,8 +292,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });
@@ -325,8 +337,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });
@@ -374,8 +386,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({
       quest: {
         ...updated,
-        receptionistName: updated.receptionist?.name ?? null,
-        adventurerName: updated.adventurer?.name ?? null,
+        receptionistName: updated.receptionist?.displayName ?? null,
+        adventurerName: updated.adventurer?.displayName ?? null,
         selectedAdventurerIds: (updated.selectedAdventurers ?? []).map((item) => item.adventurerId),
       },
     });

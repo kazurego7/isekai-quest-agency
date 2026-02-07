@@ -45,7 +45,6 @@ export default function ReceptionPage() {
 
   useEffect(() => {
     let active = true;
-    setIsLoading(true);
     Promise.all([fetch("/api/requests"), fetch("/api/quests")])
       .then(async ([requestsResponse, questsResponse]) => {
         const requestsData = await requestsResponse.json();
