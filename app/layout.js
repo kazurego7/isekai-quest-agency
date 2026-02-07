@@ -1,5 +1,7 @@
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import SessionToolbar from "@/components/session-toolbar";
+import AppSessionProvider from "@/components/session-provider";
 
 export const metadata = {
   title: "異世界クエスト斡旋アプリ",
@@ -8,8 +10,13 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ja">
-      <body className={cn("min-h-screen bg-background text-foreground antialiased")}>{children}</body>
+    <html lang="ja" suppressHydrationWarning>
+      <body className={cn("min-h-screen bg-background text-foreground antialiased")} suppressHydrationWarning>
+        <AppSessionProvider>
+          <SessionToolbar />
+          {children}
+        </AppSessionProvider>
+      </body>
     </html>
   );
 }

@@ -120,12 +120,16 @@ model QuestAdventurer {
 }
 
 model User {
-  // 画面操作ユーザー（開発用）
+  // 画面操作ユーザー
   id        String   @id @default(uuid())
-  // ロール（requester/reception/adventurer）
+  // ユーザー区分（general/staff）
+  userType  String
+  // ロール（staff の場合は reception）
   role      String
-  // 表示名
-  name      String
+  // ログイン名（一意）
+  name      String   @unique
+  // パスワードハッシュ
+  passwordHash String
   // 作成日時
   createdAt DateTime @default(now())
   // 更新日時

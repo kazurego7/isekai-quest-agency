@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 
 const normalizeValue = (value) => {
   const trimmed = String(value ?? "").trim();
@@ -7,10 +10,20 @@ const normalizeValue = (value) => {
 };
 
 export async function GET(request) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
+  }
   const { searchParams } = new URL(request.url);
   const requesterId = searchParams.get("requesterId");
-  const hasRequesterFilter = requesterId !== null;
-  const trimmedRequesterId = String(requesterId || "").trim();
+  const requestedRequesterId = String(requesterId || "").trim();
+  const hasRequesterFilter = requesterId !== null || isGeneralUser(actor);
+  const trimmedRequesterId =
+    isGeneralUser(actor) ? actor.id : requestedRequesterId;
 
   if (hasRequesterFilter && !trimmedRequesterId) {
     return NextResponse.json({ requests: [] });
@@ -35,10 +48,18 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor)) {
+    return NextResponse.json({ error: "依頼作成権限がありません。" }, { status: 403 });
+  }
   const payload = await request.json();
   const mode = payload.mode;
   const title = String(payload.title || "").trim();
-  const requesterId = String(payload.requesterId || "").trim();
+  const requesterId = actor.id;
 
   if (!requesterId) {
     return NextResponse.json({ error: "依頼者の指定が必要です。" }, { status: 400 });
@@ -46,7 +67,7 @@ export async function POST(request) {
   const requester = await prisma.user.findUnique({
     where: { id: requesterId },
   });
-  if (!requester || requester.role !== "requester") {
+  if (!requester || requester.userType !== "general") {
     return NextResponse.json({ error: "依頼者が不正です。" }, { status: 400 });
   }
 

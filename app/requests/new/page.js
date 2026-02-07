@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import ConfirmActionButton from "../confirm-action-button";
 import { useRouter } from "next/navigation";
-import DevUserSelector from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 
 const fields = [
   { label: "依頼タイトル", key: "title", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
@@ -21,7 +21,7 @@ const fields = [
 
 export default function NewRequestPage() {
   const router = useRouter();
-  const { user } = useDevUser("requester");
+  const { user } = useSessionUser();
   const [formState, setFormState] = useState(() =>
     fields.reduce((acc, field) => {
       acc[field.key] = "";
@@ -53,7 +53,6 @@ export default function NewRequestPage() {
         risk: formState.risk,
         reward: formState.reward,
         requesterNote: formState.requesterNote,
-        requesterId: user?.id,
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -77,7 +76,6 @@ export default function NewRequestPage() {
         risk: formState.risk,
         reward: formState.reward,
         requesterNote: formState.requesterNote,
-        requesterId: user?.id,
       }),
     });
     if (!response.ok) {
@@ -94,21 +92,18 @@ export default function NewRequestPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">New</p>
             <h1 className="font-serif text-2xl">新規依頼作成</h1>
           </div>
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/requests">一覧へ</Link>
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="requests" />
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/requests">一覧へ</Link>
+            </Button>
+          </div>
         </header>
-
-        <DevUserSelector
-          role="requester"
-          roleLabel="依頼者"
-          helperText="開発用ユーザーを選択すると依頼作成が可能になります。"
-        />
 
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>

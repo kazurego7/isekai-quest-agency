@@ -15,8 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../confirm-action-button";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 
 const fieldOrder = [
   { label: "依頼タイトル", key: "title" },
@@ -83,15 +83,14 @@ export default function RequestDetail() {
   const isRoleValid = Boolean(role);
   const roleForLinks = role ?? "requester";
   const listHref = role === "reception" ? "/reception" : "/requests";
-  const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
-  const { user, users, userId, selectUser, ready, isEnabled } = useDevUser(roleForLinks);
-  const requesterId = roleForLinks === "requester" ? user?.id : "";
+  const { user, isLoading: isUserLoading } = useSessionUser();
+  const requesterId = roleForLinks === "requester" && role !== "reception" ? user?.id : "";
   const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!id) return;
     if (roleForLinks === "requester") {
-      if (!ready) {
+      if (isUserLoading) {
         return;
       }
       if (!requesterId) {
@@ -127,7 +126,7 @@ export default function RequestDetail() {
       active = false;
       controller.abort();
     };
-  }, [id, ready, requesterId, roleForLinks]);
+  }, [id, isUserLoading, requesterId, roleForLinks]);
 
   const request = useMemo(() => currentRequest, [currentRequest]);
   const hasActor = Boolean(user?.id);
@@ -172,7 +171,7 @@ export default function RequestDetail() {
     const response = await fetch(`/api/requests/${request.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "agree", actorRole: roleForLinks, actorId: user?.id }),
+      body: JSON.stringify({ mode: "agree" }),
     });
     if (!response.ok) {
       return;
@@ -209,8 +208,6 @@ export default function RequestDetail() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "draft-save",
-        actorRole: roleForLinks,
-        actorId: user?.id,
         fields: draftFields ?? {},
       }),
     });
@@ -228,8 +225,6 @@ export default function RequestDetail() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "submit",
-        actorRole: roleForLinks,
-        actorId: user?.id,
         fields: draftFields ?? {},
       }),
     });
@@ -243,10 +238,7 @@ export default function RequestDetail() {
     const response = await fetch(`/api/requests/${request.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        actorRole: roleForLinks,
-        actorId: user?.id,
-      }),
+      body: JSON.stringify({}),
     });
     if (!response.ok) {
       throw new Error("下書きの削除に失敗しました。");
@@ -273,30 +265,23 @@ export default function RequestDetail() {
       return (
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
           <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-            <header className="flex items-center justify-between">
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.32em] text-primary">Detail</p>
                 <h1 className="font-serif text-2xl">依頼詳細</h1>
               </div>
-              <Button size="sm" variant="outline" asChild>
-                <Link href={listHref}>一覧へ</Link>
-              </Button>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <GeneralUserSwitch currentArea="requests" />
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={listHref}>一覧へ</Link>
+                </Button>
+              </div>
             </header>
-
-            <DevUserSelectorView
-              user={user}
-              users={users}
-              userId={userId}
-              selectUser={selectUser}
-              isEnabled={isEnabled}
-              roleLabel={roleLabel}
-              helperText="開発用ユーザーを選択すると合意や調整が可能になります。"
-            />
 
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
-                <CardDescription>上の開発用ログインでユーザーを選ぶと、依頼詳細が表示されます。</CardDescription>
+                <CardDescription>ログイン後に依頼一覧から対象を開いてください。</CardDescription>
               </CardHeader>
               <CardFooter>
                 <Button variant="outline" asChild>
@@ -311,25 +296,18 @@ export default function RequestDetail() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
         <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-          <header className="flex items-center justify-between">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.32em] text-primary">Detail</p>
               <h1 className="font-serif text-2xl">依頼詳細</h1>
             </div>
-            <Button size="sm" variant="outline" asChild>
-              <Link href={listHref}>一覧へ</Link>
-            </Button>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <GeneralUserSwitch currentArea="requests" />
+              <Button size="sm" variant="outline" asChild>
+                <Link href={listHref}>一覧へ</Link>
+              </Button>
+            </div>
           </header>
-
-          <DevUserSelectorView
-            user={user}
-            users={users}
-            userId={userId}
-            selectUser={selectUser}
-            isEnabled={isEnabled}
-            roleLabel={roleLabel}
-            helperText="開発用ユーザーを切り替えると表示できる場合があります。"
-          />
 
           <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
             <CardHeader className="space-y-1">
@@ -353,25 +331,18 @@ export default function RequestDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Detail</p>
             <h1 className="font-serif text-2xl">依頼詳細</h1>
           </div>
-          <Button size="sm" variant="outline" asChild>
-            <Link href={listHref}>一覧へ</Link>
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="requests" />
+            <Button size="sm" variant="outline" asChild>
+              <Link href={listHref}>一覧へ</Link>
+            </Button>
+          </div>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel={roleLabel}
-          helperText="開発用ユーザーを選択すると合意や調整が可能になります。"
-        />
 
         {isDraft ? (
           <Card className="border border-primary/15 bg-white/90 shadow-sm">

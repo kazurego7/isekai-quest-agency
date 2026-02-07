@@ -7,8 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
 const publishFieldLabels = [
   { key: "rank", label: "冒険者ランク制限", placeholder: "Bランク以上" },
   { key: "slots", label: "募集人数・役割", placeholder: "3名（前衛1 / 後衛1 / 支援1）" },
@@ -46,7 +45,7 @@ function QuestifyClient() {
   const requestId = searchParams.get("requestId");
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
+  const { user } = useSessionUser();
   const [checklistItems, setChecklistItems] = useState([{ label: "", note: "" }]);
   const [publishFields, setPublishFields] = useState(() =>
     publishFieldLabels.reduce((acc, field) => {
@@ -108,7 +107,6 @@ function QuestifyClient() {
       body: JSON.stringify({
         requestId,
         publishFields,
-        actorId: user?.id,
         checklist: checklistItems
           .map((item) => ({
             label: String(item.label ?? "").trim(),
@@ -174,16 +172,6 @@ function QuestifyClient() {
             <Link href="/reception">受付コンソールへ戻る</Link>
           </Button>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel="受付"
-          helperText="開発用ユーザーを選択するとクエスト化が可能になります。"
-        />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-primary/15 bg-white/90 shadow-sm">

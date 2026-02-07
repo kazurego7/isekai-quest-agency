@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestDetailClient from "./quest-detail-client";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 
 export default function AdventurerQuestDetail() {
   const params = useParams();
@@ -17,7 +17,7 @@ export default function AdventurerQuestDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
-  const { user, users, userId, selectUser, isEnabled } = useDevUser("adventurer");
+  const { user } = useSessionUser();
   const hasActor = Boolean(user?.id);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function AdventurerQuestDetail() {
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "apply", actorId: user?.id }),
+      body: JSON.stringify({ mode: "apply" }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("申請に失敗しました。");
@@ -104,7 +104,6 @@ export default function AdventurerQuestDetail() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "report",
-        actorId: user?.id,
         reportComment: reportComment?.comment ?? reportComment ?? "",
         checklist: reportComment?.checklist ?? [],
         photos: normalizedPhotos,
@@ -155,26 +154,19 @@ export default function AdventurerQuestDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adventurer</p>
             <h1 className="font-serif text-2xl text-ink">クエスト詳細</h1>
             <p className="text-sm text-muted-foreground">冒険者が進行状況を入力・確認する画面です。</p>
           </div>
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/adventurer">一覧へ戻る</Link>
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="adventurer" />
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/adventurer">一覧へ戻る</Link>
+            </Button>
+          </div>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel="冒険者"
-          helperText="開発用ユーザーを選択すると報告や受注が可能になります。"
-        />
 
         <Card className="border-primary/15 bg-white/90 shadow-sm">
           <CardHeader className="flex items-start justify-between gap-4">

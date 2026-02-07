@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 export async function GET(request) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
+  }
   const { searchParams } = new URL(request.url);
-  const userId = String(searchParams.get("userId") ?? "").trim();
+  const requestedUserId = String(searchParams.get("userId") ?? "").trim();
+  const userId = isGeneralUser(actor) ? actor.id : requestedUserId;
   const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
   const adventurer =
-    user && user.role === "adventurer"
+    user && user.userType === "general"
       ? await prisma.adventurer.findFirst({ where: { name: user.name } })
       : null;
 
@@ -43,11 +55,18 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "受付のみ実行できます。" }, { status: 403 });
+  }
   const payload = await request.json();
   const requestId = payload.requestId;
   const publishFields = payload.publishFields ?? {};
   const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
-  const actorId = String(payload.actorId || "").trim();
 
   if (!requestId) {
     return NextResponse.json({ error: "requestIdが必要です。" }, { status: 400 });
@@ -63,11 +82,6 @@ export async function POST(request) {
 
   if (sourceRequest.status !== "合意済み") {
     return NextResponse.json({ error: "合意済みの依頼のみクエスト化できます。" }, { status: 400 });
-  }
-
-  const actor = actorId ? await prisma.user.findUnique({ where: { id: actorId } }) : null;
-  if (!actor || actor.role !== "reception") {
-    return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
   }
 
   const created = await prisma.$transaction(async (tx) => {

@@ -14,8 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ConfirmActionButton from "../../../confirm-action-button";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 
 const fieldOrder = [
   { label: "依頼タイトル", key: "title" },
@@ -51,15 +51,14 @@ export default function AdjustPage() {
   const isRoleValid = Boolean(role);
   const roleForLinks = role ?? "requester";
   const waitingLabel = roleForLinks === "reception" ? "依頼者" : "受付";
-  const roleLabel = roleForLinks === "reception" ? "受付" : "依頼者";
-  const { user, users, userId, selectUser, ready, isEnabled } = useDevUser(roleForLinks);
-  const requesterId = roleForLinks === "requester" ? user?.id : "";
+  const { user, isLoading: isUserLoading } = useSessionUser();
+  const requesterId = roleForLinks === "requester" && role !== "reception" ? user?.id : "";
   const activeAbortRef = useRef(null);
 
   useEffect(() => {
     if (!requestId) return;
     if (roleForLinks === "requester") {
-      if (!ready) {
+      if (isUserLoading) {
         return;
       }
       if (!requesterId) {
@@ -95,7 +94,7 @@ export default function AdjustPage() {
       active = false;
       controller.abort();
     };
-  }, [requestId, ready, requesterId, roleForLinks]);
+  }, [requestId, isUserLoading, requesterId, roleForLinks]);
 
   const [suggestedFields, setSuggestedFields] = useState(() => emptyDraft.suggested);
   const [reason, setReason] = useState(emptyDraft.reason);
@@ -143,8 +142,6 @@ export default function AdjustPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: "adjust",
-        actorRole: roleForLinks,
-        actorId: user?.id,
         fields: {
           title: suggestedFields.title,
           purpose: suggestedFields.purpose,
@@ -184,7 +181,7 @@ export default function AdjustPage() {
       return (
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
           <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-            <header className="flex items-center justify-between">
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
                 <h1 className="font-serif text-2xl">依頼調整</h1>
@@ -192,25 +189,18 @@ export default function AdjustPage() {
                   依頼者と受付嬢が交互に「合意」または「調整」を送ります。この画面では調整案のみ送信し、合意は詳細画面で行う想定です（誤合意防止のため）。
                 </p>
               </div>
-              <Button size="sm" variant="outline" asChild>
-                <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
-              </Button>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <GeneralUserSwitch currentArea="requests" />
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
+                </Button>
+              </div>
             </header>
-
-            <DevUserSelectorView
-              user={user}
-              users={users}
-              userId={userId}
-              selectUser={selectUser}
-              isEnabled={isEnabled}
-              roleLabel={roleLabel}
-              helperText="開発用ユーザーを選択すると調整案の送信が可能になります。"
-            />
 
             <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
-                <CardDescription>上の開発用ログインでユーザーを選ぶと、調整内容が表示されます。</CardDescription>
+                <CardDescription>ログイン後に依頼一覧から対象を開いてください。</CardDescription>
               </CardHeader>
               <CardFooter>
                 <Button variant="outline" asChild>
@@ -244,7 +234,7 @@ export default function AdjustPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Adjust</p>
             <h1 className="font-serif text-2xl">依頼調整</h1>
@@ -261,20 +251,13 @@ export default function AdjustPage() {
               <p>依頼者が依頼送信 → 受付嬢が合意 or 調整 → 依頼者が合意 or 再調整 → 受付嬢が合意</p>
             </div>
           </div>
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="requests" />
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/requests/${roleForLinks}/${requestId}`}>詳細へ戻る</Link>
+            </Button>
+          </div>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel={roleLabel}
-          helperText="開発用ユーザーを選択すると調整案の送信が可能になります。"
-        />
 
         <Card className="border border-primary/15 bg-white/90 shadow-sm">
           <CardHeader>

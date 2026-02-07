@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 
 const normalizeValue = (value) => {
   const trimmed = String(value ?? "").trim();
@@ -7,6 +10,15 @@ const normalizeValue = (value) => {
 };
 
 export async function GET(_request, context) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(_request.url);
   const requesterId = searchParams.get("requesterId");
   const hasRequesterFilter = requesterId !== null;
@@ -29,7 +41,11 @@ export async function GET(_request, context) {
     return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
   }
 
-  if (hasRequesterFilter && (!trimmedRequesterId || request.requesterId !== trimmedRequesterId)) {
+  const forceRequesterId = isGeneralUser(actor) ? actor.id : trimmedRequesterId;
+  if (hasRequesterFilter && (!forceRequesterId || request.requesterId !== forceRequesterId)) {
+    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
+  }
+  if (isGeneralUser(actor) && request.requesterId !== actor.id) {
     return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
   }
 
@@ -43,6 +59,14 @@ export async function GET(_request, context) {
 }
 
 export async function PATCH(request, context) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "更新権限がありません。" }, { status: 403 });
+  }
   const { params } = context;
   const { id } = (await params) ?? {};
   if (!id) {
@@ -51,14 +75,7 @@ export async function PATCH(request, context) {
 
   const payload = await request.json();
   const mode = payload.mode;
-  const actorId = String(payload.actorId || "").trim();
-  const actorRole = payload.actorRole === "reception" ? "reception" : "requester";
-  const actor = actorId
-    ? await prisma.user.findUnique({ where: { id: actorId } })
-    : null;
-  if (!actor || actor.role !== actorRole) {
-    return NextResponse.json({ error: "担当者が不正です。" }, { status: 400 });
-  }
+  const actorRole = isReceptionStaff(actor) ? "reception" : "requester";
   const idUpdate =
     actorRole === "reception"
       ? { receptionistId: actor.id }
@@ -256,24 +273,21 @@ export async function PATCH(request, context) {
 }
 
 export async function DELETE(request, context) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor)) {
+    return NextResponse.json({ error: "削除権限がありません。" }, { status: 403 });
+  }
   const { params } = context;
   const { id } = (await params) ?? {};
   if (!id) {
     return NextResponse.json({ error: "IDが不正です。" }, { status: 400 });
   }
 
-  const payload = await request.json();
-  const actorId = String(payload.actorId || "").trim();
-  const actorRole = payload.actorRole === "reception" ? "reception" : "requester";
-  const actor = actorId
-    ? await prisma.user.findUnique({ where: { id: actorId } })
-    : null;
-  if (!actor || actor.role !== actorRole) {
-    return NextResponse.json({ error: "担当者が不正です。" }, { status: 400 });
-  }
-  if (actorRole !== "requester") {
-    return NextResponse.json({ error: "依頼者のみが削除できます。" }, { status: 400 });
-  }
+  await request.json().catch(() => ({}));
 
   const current = await prisma.request.findUnique({ where: { id } });
   if (!current) {

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 
 const ensureAdventurerForUser = async (user) => {
   if (!user?.name) return null;
@@ -68,6 +71,14 @@ export async function GET(_request, context) {
 }
 
 export async function PATCH(request, context) {
+  const session = await getServerSession(authOptions);
+  const actor = assertAuthenticatedSession(session);
+  if (!actor) {
+    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+  }
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
+    return NextResponse.json({ error: "更新権限がありません。" }, { status: 403 });
+  }
   const { params } = context;
   const { id } = (await params) ?? {};
   if (!id) {
@@ -76,11 +87,9 @@ export async function PATCH(request, context) {
 
   const payload = await request.json();
   const mode = payload.mode;
-  const actorId = String(payload.actorId || "").trim();
-  const actor = actorId ? await prisma.user.findUnique({ where: { id: actorId } }) : null;
 
   if (mode === "apply") {
-    if (!actor || actor.role !== "adventurer") {
+    if (!isGeneralUser(actor)) {
       return NextResponse.json({ error: "冒険者が不正です。" }, { status: 400 });
     }
     const targetQuest = await prisma.quest.findUnique({ where: { id } });
@@ -111,7 +120,7 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "accept") {
-    if (!actor || actor.role !== "adventurer") {
+    if (!isGeneralUser(actor)) {
       return NextResponse.json({ error: "冒険者が不正です。" }, { status: 400 });
     }
     const adventurer = await ensureAdventurerForUser(actor);
@@ -170,7 +179,7 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "report") {
-    if (!actor || actor.role !== "adventurer") {
+    if (!isGeneralUser(actor)) {
       return NextResponse.json({ error: "冒険者が不正です。" }, { status: 400 });
     }
     const reportComment = payload.reportComment ?? "";
@@ -205,7 +214,7 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "verify") {
-    if (!actor || actor.role !== "reception") {
+    if (!isReceptionStaff(actor)) {
       return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
     }
     const reviewNote = payload.reviewNote ?? null;
@@ -249,7 +258,7 @@ export async function PATCH(request, context) {
   }
 
   if (mode === "remand") {
-    if (!actor || actor.role !== "reception") {
+    if (!isReceptionStaff(actor)) {
       return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
     }
     const reviewNote = payload.reviewNote ?? null;
@@ -283,7 +292,7 @@ export async function PATCH(request, context) {
     if (!selectedIds) {
       return NextResponse.json({ error: "選定内容が不正です。" }, { status: 400 });
     }
-    if (!actor || actor.role !== "reception") {
+    if (!isReceptionStaff(actor)) {
       return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
     }
 
@@ -328,7 +337,7 @@ export async function PATCH(request, context) {
     if (!selectedIds) {
       return NextResponse.json({ error: "選定内容が不正です。" }, { status: 400 });
     }
-    if (!actor || actor.role !== "reception") {
+    if (!isReceptionStaff(actor)) {
       return NextResponse.json({ error: "受付が不正です。" }, { status: 400 });
     }
 

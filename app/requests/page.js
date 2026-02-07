@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import DevUserSelector from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 
 const statusStyle = {
   合意待ち: "default",
@@ -39,9 +39,12 @@ const deriveViewStatus = ({ status, requesterAgreed, receptionistAgreed }) => {
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useDevUser("requester");
+  const { user, isLoading: isUserLoading } = useSessionUser();
 
   useEffect(() => {
+    if (isUserLoading) {
+      return;
+    }
     if (!user?.id) {
       setRequests([]);
       setIsLoading(false);
@@ -49,7 +52,7 @@ export default function RequestsPage() {
     }
     let active = true;
     setIsLoading(true);
-    fetch(`/api/requests?requesterId=${encodeURIComponent(user.id)}`)
+    fetch("/api/requests")
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
@@ -66,7 +69,7 @@ export default function RequestsPage() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [isUserLoading, user?.id]);
 
   const sortedRequests = useMemo(() => {
     return [...requests].sort((a, b) => {
@@ -77,21 +80,18 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-primary">Requests</p>
-            <h1 className="font-serif text-2xl">依頼者（モバイル想定）</h1>
+            <h1 className="font-serif text-2xl">依頼一覧</h1>
           </div>
-          <Button asChild size="sm">
-            <Link href="/requests/new">新規依頼</Link>
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="requests" />
+            <Button asChild size="sm">
+              <Link href="/requests/new">新規依頼</Link>
+            </Button>
+          </div>
         </header>
-
-        <DevUserSelector
-          role="requester"
-          roleLabel="依頼者"
-          helperText="開発用ユーザーを選択すると自分の依頼だけが表示されます。"
-        />
 
         <div className="space-y-3">
           {isLoading ? (
@@ -99,13 +99,6 @@ export default function RequestsPage() {
               <CardHeader className="space-y-1">
                 <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
                 <CardDescription>依頼一覧を取得しています。</CardDescription>
-              </CardHeader>
-            </Card>
-          ) : !user?.id ? (
-            <Card className="border border-dashed border-border/70 bg-white/80 shadow-sm">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-base text-ink">依頼者を選択してください</CardTitle>
-                <CardDescription>上の開発用ログインでユーザーを選ぶと、自分の依頼だけが表示されます。</CardDescription>
               </CardHeader>
             </Card>
           ) : sortedRequests.length ? (
@@ -142,11 +135,6 @@ export default function RequestsPage() {
             </Card>
           )}
         </div>
-
-
-        <Button variant="ghost" asChild className="w-full justify-center">
-          <Link href="/">ホームに戻る</Link>
-        </Button>
       </div>
     </div>
   );

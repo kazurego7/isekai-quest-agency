@@ -6,19 +6,19 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
 export default function AdventurerDashboard() {
   const [quests, setQuests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, users, userId, selectUser, isEnabled } = useDevUser("adventurer");
+  const { user, isLoading: isUserLoading } = useSessionUser();
   const hasActor = Boolean(user?.id);
 
   useEffect(() => {
+    if (isUserLoading) return;
     let active = true;
     setIsLoading(true);
-    const query = user?.id ? `?userId=${encodeURIComponent(user.id)}` : "";
-    fetch(`/api/quests${query}`)
+    fetch("/api/quests")
       .then((response) => response.json())
       .then((data) => {
         if (!active) return;
@@ -35,7 +35,7 @@ export default function AdventurerDashboard() {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [isUserLoading, user?.id]);
 
   const openQuests = useMemo(() => {
     return quests.filter((quest) => quest.status === "募集中");
@@ -60,13 +60,12 @@ export default function AdventurerDashboard() {
     return fetch(`/api/quests/${questId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "apply", actorId: user?.id }),
+      body: JSON.stringify({ mode: "apply" }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("申請に失敗しました。");
       }
-      const query = user?.id ? `?userId=${encodeURIComponent(user.id)}` : "";
-      return fetch(`/api/quests${query}`)
+      return fetch("/api/quests")
         .then((nextResponse) => nextResponse.json())
         .then((data) => {
           setQuests(data.quests ?? []);
@@ -78,22 +77,19 @@ export default function AdventurerDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
       <div className="mx-auto max-w-screen-md px-6 pb-16 pt-10 space-y-8">
         <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.32em] text-primary">Adventurer</p>
-          <h1 className="font-serif text-2xl text-ink">冒険者（ダッシュボード）</h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-primary">Adventurer</p>
+              <h1 className="font-serif text-2xl text-ink">クエスト一覧</h1>
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <GeneralUserSwitch currentArea="adventurer" />
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground">
             まず自分のクエスト状況を確認し、その後に募集中クエストを探します。
           </p>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel="冒険者"
-          helperText="開発用ユーザーを選択すると申請・受注・報告の記録に使われます。"
-        />
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Card className="border-primary/15 bg-white/90 shadow-sm">

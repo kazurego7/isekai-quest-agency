@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import DevUserSelector from "@/components/dev-user-selector";
 
 const statusStyle = {
   合意待ち: "default",
@@ -116,12 +115,6 @@ export default function ReceptionPage() {
             ))}
           </div>
         </header>
-
-        <DevUserSelector
-          role="reception"
-          roleLabel="受付"
-          helperText="開発用ユーザーを選択すると受付操作の記録に使われます。"
-        />
 
         <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:auto-rows-fr">
           <Card className="flex h-full flex-col border border-border/70 bg-white/90 shadow-sm">

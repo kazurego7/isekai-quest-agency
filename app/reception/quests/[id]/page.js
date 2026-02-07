@@ -7,8 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
 
 export default function QuestSelectionPage() {
   const params = useParams();
@@ -16,7 +15,7 @@ export default function QuestSelectionPage() {
   const [quest, setQuest] = useState(null);
   const [adventurers, setAdventurers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
+  const { user } = useSessionUser();
   const [applicantPage, setApplicantPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [activeList, setActiveList] = useState("applicants");
@@ -129,7 +128,6 @@ export default function QuestSelectionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "select",
-          actorId: user?.id,
           selectedIds,
         }),
       });
@@ -152,7 +150,6 @@ export default function QuestSelectionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "finalize-selection",
-          actorId: user?.id,
           selectedIds,
         }),
       });
@@ -218,16 +215,6 @@ export default function QuestSelectionPage() {
             </Button>
           </div>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel="受付"
-          helperText="開発用ユーザーを選択すると選定保存が可能になります。"
-        />
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr_1fr]">
           <Card className="border-primary/15 bg-white/90 shadow-sm">

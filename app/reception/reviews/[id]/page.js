@@ -6,10 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import QuestReviewClient from "./quest-review-client";
-import { DevUserSelectorView } from "@/components/dev-user-selector";
-import { useDevUser } from "@/lib/dev-user";
+import { useSessionUser } from "@/lib/session-user";
 
 export default function ReceptionReviewDetail() {
   const params = useParams();
@@ -17,7 +16,7 @@ export default function ReceptionReviewDetail() {
   const [quest, setQuest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const id = String(params?.id ?? "");
-  const { user, users, userId, selectUser, isEnabled } = useDevUser("reception");
+  const { user } = useSessionUser();
 
   useEffect(() => {
     if (!id) return;
@@ -60,7 +59,7 @@ export default function ReceptionReviewDetail() {
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "verify", reviewNote, actorId: user?.id }),
+      body: JSON.stringify({ mode: "verify", reviewNote }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("達成確認の記録に失敗しました。");
@@ -74,7 +73,7 @@ export default function ReceptionReviewDetail() {
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "remand", reviewNote, actorId: user?.id }),
+      body: JSON.stringify({ mode: "remand", reviewNote }),
     }).then((response) => {
       if (!response.ok) {
         throw new Error("差し戻しに失敗しました。");
@@ -134,16 +133,6 @@ export default function ReceptionReviewDetail() {
             </Button>
           </div>
         </header>
-
-        <DevUserSelectorView
-          user={user}
-          users={users}
-          userId={userId}
-          selectUser={selectUser}
-          isEnabled={isEnabled}
-          roleLabel="受付"
-          helperText="開発用ユーザーを選択すると達成確認の記録に使われます。"
-        />
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <Card className="border-primary/15 bg-white/90 shadow-sm">
