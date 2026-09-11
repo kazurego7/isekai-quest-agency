@@ -1,14 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+
+import { MAX_PHOTOS, MAX_PHOTO_BYTES, MAX_TOTAL_PHOTO_BYTES, PHOTO_TYPES, PHOTO_HINT } from "@/lib/photo-limits";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function QuestDetailClient({ quest, onComplete }) {
-  const isEditable = quest.status === "クエスト進行中";
-  const canComplete = quest.status === "クエスト進行中";
+  const [isReading, setIsReading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const busy = useRef(false);
+  const isEditable = Boolean(quest.canReport) && !isReading && !isSubmitting;
+  const canComplete = isEditable;
   const fieldHint = isEditable ? "クエスト進行中の間だけ編集できます。" : "現在は閲覧のみです。";
   const [photoItems, setPhotoItems] = useState(() =>
     (quest.photos ?? []).map((photo, index) => ({
@@ -28,41 +34,64 @@ export default function QuestDetailClient({ quest, onComplete }) {
     })),
   );
 
-  useEffect(() => {
-    return () => {
-      photoItems.forEach((item) => {
-        if (item.url?.startsWith("blob:")) {
-          URL.revokeObjectURL(item.url);
-        }
-      });
-    };
-  }, [photoItems]);
-
   const photoCountLabel = useMemo(() => {
     if (!photoItems.length) return "写真は未選択";
     return `${photoItems.length}枚の写真を追加済み`;
   }, [photoItems.length]);
 
-  const handlePhotoSelect = (event) => {
+  const handlePhotoSelect = async (event) => {
     const files = Array.from(event.target.files ?? []);
-    if (!files.length) return;
-    const nextItems = files.map((file) => ({
-      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
-      name: file.name,
-      size: Math.round(file.size / 1024),
-      url: URL.createObjectURL(file),
-      label: file.name,
-    }));
-    setPhotoItems((prev) => [...prev, ...nextItems]);
     event.target.value = "";
+    if (!files.length || !isEditable || busy.current) return;
+    setError("");
+    const currentBytes = photoItems.reduce((sum, item) => {
+      const encoded = item.url?.split(",")[1] ?? "";
+      return sum + encoded.length * 3 / 4 - (encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0);
+    }, 0);
+    if (photoItems.length + files.length > MAX_PHOTOS ||
+      files.some((file) => !PHOTO_TYPES.includes(file.type) || file.size > MAX_PHOTO_BYTES) ||
+      currentBytes + files.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_PHOTO_BYTES) {
+      setError(PHOTO_HINT);
+      return;
+    }
+    busy.current = true;
+    setIsReading(true);
+    try {
+      const nextItems = await Promise.all(files.map((file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          id: crypto.randomUUID(), name: file.name, label: file.name,
+          size: Math.ceil(file.size / 1024), url: reader.result,
+        });
+        reader.onerror = () => reject(new Error("写真を読み込めませんでした。選択し直してください。"));
+        reader.readAsDataURL(file);
+      })));
+      setPhotoItems((prev) => [...prev, ...nextItems]);
+    } catch (cause) {
+      setError(cause.message);
+    } finally {
+      busy.current = false;
+      setIsReading(false);
+    }
   };
 
   const handleRemovePhoto = (id) => {
-    setPhotoItems((prev) => {
-      const target = prev.find((item) => item.id === id);
-      if (target) URL.revokeObjectURL(target.url);
-      return prev.filter((item) => item.id !== id);
-    });
+    if (!isEditable || busy.current) return;
+    setPhotoItems((prev) => prev.filter((item) => item.id !== id));
+  };
+  const handleComplete = async () => {
+    if (!canComplete || busy.current) return;
+    busy.current = true;
+    setIsSubmitting(true);
+    setError("");
+    try {
+      await onComplete({ comment: reportComment, checklist: checklistItems, photos: photoItems });
+    } catch (cause) {
+      setError(cause.message || "完了報告に失敗しました。再度お試しください。");
+    } finally {
+      busy.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -98,10 +127,12 @@ export default function QuestDetailClient({ quest, onComplete }) {
           <div className="space-y-2 pt-2">
             <p className="text-sm font-semibold text-ink">成果写真</p>
             <p className="text-xs text-muted-foreground">{photoCountLabel}</p>
+            <p className="text-xs text-muted-foreground">{PHOTO_HINT}</p>
             <label className="block">
               <span className="sr-only">成果写真を追加</span>
               <input
                 type="file"
+                accept={PHOTO_TYPES.join(",")}
                 multiple
                 className="w-full text-sm text-muted-foreground"
                 onChange={handlePhotoSelect}
@@ -114,6 +145,8 @@ export default function QuestDetailClient({ quest, onComplete }) {
                   <div key={photo.id} className="group relative overflow-hidden rounded-lg border border-border/70 bg-muted/30">
                     <button
                       type="button"
+                      disabled={!isEditable}
+                      aria-label={`${photo.name ?? "写真"}を削除`}
                       className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-ink shadow-sm"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -172,18 +205,13 @@ export default function QuestDetailClient({ quest, onComplete }) {
           <p className="text-xs text-muted-foreground">{fieldHint}</p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2">
+          {error ? <p role="alert" className="w-full text-sm text-red-700">{error}</p> : null}
           <Button
             size="sm"
-            onClick={() =>
-              onComplete?.({
-                comment: reportComment,
-                checklist: checklistItems,
-                photos: photoItems,
-              })
-            }
+            onClick={handleComplete}
             disabled={!canComplete}
           >
-            完了報告を送信
+            {isSubmitting ? "送信中..." : isReading ? "写真を読み込み中..." : "完了報告を送信"}
           </Button>
         </CardFooter>
       </Card>

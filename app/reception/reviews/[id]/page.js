@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { readApiResponse } from "@/lib/api-client";
 import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -59,10 +60,8 @@ export default function ReceptionReviewDetail() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "verify", reviewNote }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("達成確認の記録に失敗しました。");
-      }
+    }).then(async (response) => {
+      await readApiResponse(response, "達成確認の記録に失敗しました。");
       router.push("/reception");
     });
   };
@@ -73,10 +72,8 @@ export default function ReceptionReviewDetail() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "remand", reviewNote }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("差し戻しに失敗しました。");
-      }
+    }).then(async (response) => {
+      await readApiResponse(response, "差し戻しに失敗しました。");
       router.push("/reception");
     });
   };

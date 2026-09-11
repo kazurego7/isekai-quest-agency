@@ -44,11 +44,11 @@ export default function AdventurerDashboard() {
     return quests.filter((quest) => {
       if (!["クエスト進行中", "完了報告済み"].includes(quest.status)) return false;
       const viewerAdventurerId = quest.viewerAdventurerId ?? null;
+      if (quest.adventurerId && quest.adventurerId === user?.id) return true;
       if (!viewerAdventurerId) return false;
-      if (quest.adventurerId && quest.adventurerId === viewerAdventurerId) return true;
       return (quest.selectedAdventurerIds ?? []).includes(viewerAdventurerId);
     });
-  }, [quests]);
+  }, [quests, user?.id]);
 
   const questHistory = useMemo(() => {
     return quests.filter((quest) => quest.status === "達成確認済み");

@@ -3,303 +3,94 @@ import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth-options";
 import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
+import { requestInclude, requestPayload } from "@/lib/api-data";
+import { ApiError, readJson, transaction, withApiErrors } from "@/lib/api-handler";
 
-const normalizeValue = (value) => {
-  const trimmed = String(value ?? "").trim();
-  return trimmed ? trimmed : null;
-};
-
-export async function GET(_request, context) {
-  const session = await getServerSession(authOptions);
-  const actor = assertAuthenticatedSession(session);
-  if (!actor) {
-    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+async function getActor() {
+  const actor = assertAuthenticatedSession(await getServerSession(authOptions));
+  if (!actor) throw new ApiError(401, "認証が必要です。");
+  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) throw new ApiError(403, "権限がありません。");
+  return actor;
+}
+function checkOwner(current, actor) {
+  if (!current || (isGeneralUser(actor) && current.requesterId !== actor.id) ||
+    (isReceptionStaff(actor) && current.status === "下書き")) {
+    throw new ApiError(404, "依頼が見つかりません。");
   }
-  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
-    return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
-  }
-
-  const { searchParams } = new URL(_request.url);
-  const requesterId = searchParams.get("requesterId");
-  const hasRequesterFilter = requesterId !== null;
-  const trimmedRequesterId = String(requesterId || "").trim();
-  const { params } = context;
-  const { id } = (await params) ?? {};
-  if (!id) {
-    return NextResponse.json({ error: "IDが不正です。" }, { status: 400 });
-  }
-
-  const request = await prisma.request.findUnique({
-    where: { id },
-    include: {
-      requester: true,
-      receptionist: true,
-    },
-  });
-
-  if (!request) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-  }
-
-  const forceRequesterId = isGeneralUser(actor) ? actor.id : trimmedRequesterId;
-  if (hasRequesterFilter && (!forceRequesterId || request.requesterId !== forceRequesterId)) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-  }
-  if (isGeneralUser(actor) && request.requesterId !== actor.id) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    request: {
-      ...request,
-      requesterName: request.requester?.displayName ?? null,
-      receptionistName: request.receptionist?.displayName ?? null,
-    },
-  });
+}
+function requestFields(fields) {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) throw new ApiError(400, "依頼内容が不正です。");
+  return Object.fromEntries(["title", "purpose", "location", "deadline", "risk", "reward", "requesterNote"].map((key) => {
+    if (fields[key] != null && (typeof fields[key] !== "string" || fields[key].length > 10000)) {
+      throw new ApiError(400, "依頼内容は各項目10000文字以内で入力してください。");
+    }
+    return [key, fields[key]?.trim() || null];
+  }));
 }
 
-export async function PATCH(request, context) {
-  const session = await getServerSession(authOptions);
-  const actor = assertAuthenticatedSession(session);
-  if (!actor) {
-    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+export const GET = withApiErrors(async (request, context) => {
+  const actor = await getActor();
+  const { id } = await context.params;
+  const current = await prisma.request.findUnique({ where: { id }, include: requestInclude });
+  checkOwner(current, actor);
+  const filter = new URL(request.url).searchParams.get("requesterId");
+  if (filter !== null && isReceptionStaff(actor) && current.requesterId !== filter.trim()) {
+    throw new ApiError(404, "依頼が見つかりません。");
   }
-  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
-    return NextResponse.json({ error: "更新権限がありません。" }, { status: 403 });
-  }
-  const { params } = context;
-  const { id } = (await params) ?? {};
-  if (!id) {
-    return NextResponse.json({ error: "IDが不正です。" }, { status: 400 });
-  }
+  return NextResponse.json({ request: requestPayload(current) });
+});
 
-  const payload = await request.json();
-  const mode = payload.mode;
-  const actorRole = isReceptionStaff(actor) ? "reception" : "requester";
-  const idUpdate =
-    actorRole === "reception"
-      ? { receptionistId: actor.id }
-      : { requesterId: actor.id };
-
-  const buildRequestData = (fields) => ({
-    title: normalizeValue(fields?.title),
-    purpose: normalizeValue(fields?.purpose),
-    location: normalizeValue(fields?.location),
-    deadline: normalizeValue(fields?.deadline),
-    risk: normalizeValue(fields?.risk),
-    reward: normalizeValue(fields?.reward),
-    requesterNote: normalizeValue(fields?.requesterNote),
+export const PATCH = withApiErrors(async (request, context) => {
+  const actor = await getActor();
+  const { id } = await context.params;
+  const payload = await readJson(request);
+  const { mode } = payload;
+  const updated = await transaction(async (tx) => {
+    const current = await tx.request.findUnique({ where: { id } });
+    checkOwner(current, actor);
+    let data = isReceptionStaff(actor) ? { receptionistId: actor.id } : {};
+    if (mode === "draft-save" || mode === "submit") {
+      if (!isGeneralUser(actor)) throw new ApiError(403, "依頼者のみ操作できます。");
+      if (current.status !== "下書き") throw new ApiError(409, "下書き以外は保存・送信できません。");
+      const fields = requestFields(payload.fields ?? {});
+      if (mode === "submit" && !fields.title) throw new ApiError(400, "依頼タイトルは必須です。");
+      data = { ...data, ...fields, title: fields.title || current.title,
+        notes: mode === "submit" ? "受付が確認中です。" : "下書きを保存しました。" };
+      if (mode === "submit") Object.assign(data, { status: "確認前", requesterAgreed: true, receptionistAgreed: false });
+    } else if (mode === "agree" || mode === "adjust") {
+      if (!["確認前", "合意待ち", "合意済み"].includes(current.status)) {
+        throw new ApiError(409, "現在の状態では合意・調整できません。");
+      }
+      if (mode === "agree") {
+        const requesterAgreed = isGeneralUser(actor) || current.requesterAgreed;
+        const receptionistAgreed = isReceptionStaff(actor) || current.receptionistAgreed;
+        const agreed = requesterAgreed && receptionistAgreed;
+        data = { ...data, requesterAgreed, receptionistAgreed, status: agreed ? "合意済み" : "合意待ち",
+          notes: agreed ? "依頼内容は合意済みです。受付のクエスト化を待っています。" : "相手の合意待ちです。" };
+      } else {
+        const fields = requestFields(payload.fields ?? {});
+        if (payload.reason != null && (typeof payload.reason !== "string" || payload.reason.length > 10000)) {
+          throw new ApiError(400, "調整理由は10000文字以内で入力してください。");
+        }
+        data = { ...data, ...fields, title: fields.title || current.title, status: "合意待ち",
+          notes: payload.reason || "調整案が届きました。相手の合意待ちです。",
+          requesterAgreed: isGeneralUser(actor), receptionistAgreed: isReceptionStaff(actor) };
+      }
+    } else throw new ApiError(400, "更新内容が不正です。");
+    return tx.request.update({ where: { id }, data, include: requestInclude });
   });
+  return NextResponse.json({ request: requestPayload(updated) });
+});
 
-  if (mode === "agree") {
-    const current = await prisma.request.findUnique({ where: { id } });
-    if (!current) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-    if (actorRole === "requester" && current.requesterId && current.requesterId !== actor.id) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-
-    const nextAgreement = {
-      requesterAgreed: actorRole === "requester" ? true : current.requesterAgreed,
-      receptionistAgreed: actorRole === "reception" ? true : current.receptionistAgreed,
-    };
-    const isFullyAgreed = nextAgreement.requesterAgreed && nextAgreement.receptionistAgreed;
-
-    const updated = await prisma.request.update({
-      where: { id },
-      data: {
-        ...nextAgreement,
-        ...idUpdate,
-        status: isFullyAgreed ? "合意済み" : "合意待ち",
-        notes: isFullyAgreed ? "依頼内容は合意済みです。受付のクエスト化を待っています。" : "相手の合意待ちです。",
-      },
-      include: {
-        requester: true,
-        receptionist: true,
-      },
-    });
-
-    return NextResponse.json({
-      request: {
-        ...updated,
-        requesterName: updated.requester?.displayName ?? null,
-        receptionistName: updated.receptionist?.displayName ?? null,
-      },
-    });
-  }
-
-  if (mode === "draft-save") {
-    const current = await prisma.request.findUnique({ where: { id } });
-    if (!current) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-    if (current.status !== "下書き") {
-      return NextResponse.json({ error: "下書き以外は保存できません。" }, { status: 400 });
-    }
-    if (actorRole !== "requester") {
-      return NextResponse.json({ error: "依頼者のみが下書きを保存できます。" }, { status: 400 });
-    }
-    if (current.requesterId && current.requesterId !== actor.id) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-
-    const fields = payload.fields ?? {};
-    const requestData = buildRequestData(fields);
-    const updated = await prisma.request.update({
-      where: { id },
-      data: {
-        title: requestData.title ?? current.title ?? "未入力の依頼",
-        purpose: requestData.purpose,
-        location: requestData.location,
-        deadline: requestData.deadline,
-        risk: requestData.risk,
-        reward: requestData.reward,
-        requesterNote: requestData.requesterNote,
-        notes: "下書きを保存しました。",
-        ...idUpdate,
-      },
-      include: {
-        requester: true,
-        receptionist: true,
-      },
-    });
-
-    return NextResponse.json({
-      request: {
-        ...updated,
-        requesterName: updated.requester?.displayName ?? null,
-        receptionistName: updated.receptionist?.displayName ?? null,
-      },
-    });
-  }
-
-  if (mode === "submit") {
-    const current = await prisma.request.findUnique({ where: { id } });
-    if (!current) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-    if (current.status !== "下書き") {
-      return NextResponse.json({ error: "下書き以外は送信できません。" }, { status: 400 });
-    }
-    if (actorRole !== "requester") {
-      return NextResponse.json({ error: "依頼者のみが送信できます。" }, { status: 400 });
-    }
-    if (current.requesterId && current.requesterId !== actor.id) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-
-    const fields = payload.fields ?? {};
-    const requestData = buildRequestData(fields);
-    if (!requestData.title) {
-      return NextResponse.json({ error: "依頼タイトルは必須です。" }, { status: 400 });
-    }
-
-    const updated = await prisma.request.update({
-      where: { id },
-      data: {
-        title: requestData.title,
-        purpose: requestData.purpose,
-        location: requestData.location,
-        deadline: requestData.deadline,
-        risk: requestData.risk,
-        reward: requestData.reward,
-        requesterNote: requestData.requesterNote,
-        status: "確認前",
-        notes: "受付が確認中。クエスト化の準備を進める状態です。",
-        requesterAgreed: true,
-        receptionistAgreed: false,
-        ...idUpdate,
-      },
-      include: {
-        requester: true,
-        receptionist: true,
-      },
-    });
-
-    return NextResponse.json({
-      request: {
-        ...updated,
-        requesterName: updated.requester?.displayName ?? null,
-        receptionistName: updated.receptionist?.displayName ?? null,
-      },
-    });
-  }
-
-  if (mode === "adjust") {
-    const fields = payload.fields ?? {};
-    const reason = payload.reason ?? "調整案が届きました。相手の合意待ちです。";
-    const current = await prisma.request.findUnique({ where: { id } });
-    if (!current) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-    if (actorRole === "requester" && current.requesterId && current.requesterId !== actor.id) {
-      return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-    }
-
-    const requestData = buildRequestData(fields);
-    const updated = await prisma.request.update({
-      where: { id },
-      data: {
-        title: requestData.title ?? current.title,
-        purpose: requestData.purpose,
-        location: requestData.location,
-        deadline: requestData.deadline,
-        risk: requestData.risk,
-        reward: requestData.reward,
-        requesterNote: requestData.requesterNote,
-        status: "合意待ち",
-        notes: reason,
-        ...idUpdate,
-        requesterAgreed: actorRole === "requester",
-        receptionistAgreed: actorRole === "reception",
-      },
-      include: {
-        requester: true,
-        receptionist: true,
-      },
-    });
-
-    return NextResponse.json({
-      request: {
-        ...updated,
-        requesterName: updated.requester?.displayName ?? null,
-        receptionistName: updated.receptionist?.displayName ?? null,
-      },
-    });
-  }
-
-  return NextResponse.json({ error: "更新内容が不正です。" }, { status: 400 });
-}
-
-export async function DELETE(request, context) {
-  const session = await getServerSession(authOptions);
-  const actor = assertAuthenticatedSession(session);
-  if (!actor) {
-    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
-  }
-  if (!isGeneralUser(actor)) {
-    return NextResponse.json({ error: "削除権限がありません。" }, { status: 403 });
-  }
-  const { params } = context;
-  const { id } = (await params) ?? {};
-  if (!id) {
-    return NextResponse.json({ error: "IDが不正です。" }, { status: 400 });
-  }
-
-  await request.json().catch(() => ({}));
-
-  const current = await prisma.request.findUnique({ where: { id } });
-  if (!current) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-  }
-  if (current.status !== "下書き") {
-    return NextResponse.json({ error: "下書き以外は削除できません。" }, { status: 400 });
-  }
-  if (current.requesterId && current.requesterId !== actor.id) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
-  }
-
-  await prisma.request.delete({ where: { id } });
+export const DELETE = withApiErrors(async (_request, context) => {
+  const actor = await getActor();
+  if (!isGeneralUser(actor)) throw new ApiError(403, "依頼者のみ削除できます。");
+  const { id } = await context.params;
+  await transaction(async (tx) => {
+    const current = await tx.request.findUnique({ where: { id } });
+    checkOwner(current, actor);
+    if (current.status !== "下書き") throw new ApiError(409, "下書き以外は削除できません。");
+    await tx.request.delete({ where: { id } });
+  });
   return NextResponse.json({ ok: true });
-}
+});

@@ -1,8 +1,9 @@
  "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { readApiResponse } from "@/lib/api-client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { useSessionUser } from "@/lib/session-user";
 
 export default function QuestSelectionPage() {
   const params = useParams();
+  const router = useRouter();
   const questId = typeof params?.id === "string" ? params.id : params?.id?.[0];
   const [quest, setQuest] = useState(null);
   const [adventurers, setAdventurers] = useState([]);
@@ -25,6 +27,9 @@ export default function QuestSelectionPage() {
   const [selectedPage, setSelectedPage] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const actionPending = useRef(false);
+  const canSelect = quest?.status === "募集中" && Boolean(user?.id) && !isSaving && !isFinalizing;
 
   const activeQuest = useMemo(() => quest, [quest]);
   const applicantList = useMemo(() => activeQuest?.applicants ?? [], [activeQuest]);
@@ -68,6 +73,7 @@ export default function QuestSelectionPage() {
   }, [selectedAdventurers, selectedPage]);
 
   const toggleSelection = (id) => {
+    if (!canSelect || actionPending.current) return;
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
@@ -123,7 +129,9 @@ export default function QuestSelectionPage() {
   };
 
   const handleSaveSelection = async () => {
-    if (!activeQuest?.id || !user?.id) return;
+    if (!activeQuest?.id || !canSelect || actionPending.current) return;
+    actionPending.current = true;
+    setActionError("");
     setIsSaving(true);
     try {
       const response = await fetch(`/api/quests/${activeQuest.id}`, {
@@ -134,18 +142,20 @@ export default function QuestSelectionPage() {
           selectedIds,
         }),
       });
-      if (!response.ok) {
-        throw new Error("選定内容の保存に失敗しました。");
-      }
-      const data = await response.json();
+      const data = await readApiResponse(response, "選定内容の保存に失敗しました。");
       setQuest(data.quest ?? activeQuest);
+    } catch (error) {
+      setActionError(error.message);
     } finally {
+      actionPending.current = false;
       setIsSaving(false);
     }
   };
 
   const handleFinalizeSelection = async () => {
-    if (!activeQuest?.id || !user?.id) return;
+    if (!activeQuest?.id || !canSelect || !selectedIds.length || actionPending.current) return;
+    actionPending.current = true;
+    setActionError("");
     setIsFinalizing(true);
     try {
       const response = await fetch(`/api/quests/${activeQuest.id}`, {
@@ -156,12 +166,12 @@ export default function QuestSelectionPage() {
           selectedIds,
         }),
       });
-      if (!response.ok) {
-        throw new Error("選定完了に失敗しました。");
-      }
-      await response.json();
-      window.location.href = "/reception";
+      await readApiResponse(response, "選定完了に失敗しました。");
+      router.push("/reception");
+    } catch (error) {
+      setActionError(error.message);
     } finally {
+      actionPending.current = false;
       setIsFinalizing(false);
     }
   };
@@ -469,14 +479,15 @@ export default function QuestSelectionPage() {
             <CardDescription>依頼内容と参加予定者を確認し、問題がなければ保存または完了します。</CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={handleSaveSelection} disabled={isSaving || !user?.id}>
+            {actionError ? <p role="alert" className="w-full text-sm text-red-700">{actionError}</p> : null}
+            <Button size="sm" variant="secondary" onClick={handleSaveSelection} disabled={!canSelect}>
               {isSaving ? "保存中..." : "一時保存"}
             </Button>
             <Button
               size="sm"
               variant="default"
               onClick={handleFinalizeSelection}
-              disabled={isFinalizing || !user?.id || selectedIds.length === 0}
+              disabled={!canSelect || selectedIds.length === 0}
             >
               {isFinalizing ? "開始中..." : "クエスト開始"}
             </Button>

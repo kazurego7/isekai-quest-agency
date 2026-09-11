@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +10,30 @@ export default function QuestReviewClient({ quest, onVerify, onRemand, canReview
   const [activePhoto, setActivePhoto] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [remandError, setRemandError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const actionPending = useRef(false);
 
-  const canAction = Boolean(canReview);
+  const canAction = Boolean(canReview) && !isSubmitting;
   const trimmedReviewNote = reviewNote.trim();
   const hasPhotos = quest.photos.length > 0;
+  const handleAction = async (remand) => {
+    if (!canAction || actionPending.current) return;
+    if (remand && !trimmedReviewNote) {
+      setRemandError("差し戻し理由を入力してください。");
+      return;
+    }
+    actionPending.current = true;
+    setIsSubmitting(true);
+    setRemandError("");
+    try {
+      await (remand ? onRemand(trimmedReviewNote) : onVerify(reviewNote));
+    } catch (error) {
+      setRemandError(error.message || "更新に失敗しました。");
+    } finally {
+      actionPending.current = false;
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -98,31 +118,21 @@ export default function QuestReviewClient({ quest, onVerify, onRemand, canReview
               readOnly={!canAction}
             />
           </label>
-          {remandError ? <p className="text-xs text-red-500">{remandError}</p> : null}
+          {remandError ? <p role="alert" className="text-xs text-red-500">{remandError}</p> : null}
           <p className="text-xs text-muted-foreground">レビュー後に達成確認を記録します。</p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              if (!trimmedReviewNote) {
-                setRemandError("差し戻し理由を入力してください。");
-                return;
-              }
-              setRemandError("");
-              onRemand?.(trimmedReviewNote);
-            }}
+            onClick={() => handleAction(true)}
             disabled={!canAction}
           >
             差し戻し
           </Button>
           <Button
             size="sm"
-            onClick={() => {
-              setRemandError("");
-              onVerify?.(reviewNote);
-            }}
+            onClick={() => handleAction(false)}
             disabled={!canAction}
           >
             達成確認を記録

@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { authSecret } from "@/lib/auth-secret";
 import { canAccessPath, resolveRoleHome } from "@/lib/role-route";
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/auth")) {
@@ -15,6 +15,9 @@ export async function middleware(request) {
   if (!token) {
     if (pathname === "/" || pathname === "/signup" || pathname === "/api/signup") {
       return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
     }
     const url = new URL("/", request.url);
     url.searchParams.set("from", pathname);
@@ -44,5 +47,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/api/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

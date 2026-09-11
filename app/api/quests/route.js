@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { publicUserSelect, visibleQuestWhere } from "@/lib/api-data";
+import { ApiError, readJson, transaction, withApiErrors } from "@/lib/api-handler";
 import { authOptions } from "@/lib/auth-options";
 import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 export async function GET(request) {
@@ -22,10 +24,11 @@ export async function GET(request) {
       : null;
 
   const quests = await prisma.quest.findMany({
+    where: isGeneralUser(actor) ? visibleQuestWhere(actor.id) : {},
     orderBy: { createdAt: "desc" },
     include: {
-      receptionist: true,
-      adventurer: true,
+      receptionist: { select: publicUserSelect },
+      adventurer: { select: publicUserSelect },
       selectedAdventurers: true,
       applications: adventurer
         ? {
@@ -33,7 +36,7 @@ export async function GET(request) {
             include: {
               adventurer: {
                 include: {
-                  user: true,
+                  user: { select: publicUserSelect },
                 },
               },
             },
@@ -60,7 +63,7 @@ export async function GET(request) {
   return NextResponse.json({ quests: payload });
 }
 
-export async function POST(request) {
+export const POST = withApiErrors(async (request) => {
   const session = await getServerSession(authOptions);
   const actor = assertAuthenticatedSession(session);
   if (!actor) {
@@ -69,7 +72,7 @@ export async function POST(request) {
   if (!isReceptionStaff(actor)) {
     return NextResponse.json({ error: "受付のみ実行できます。" }, { status: 403 });
   }
-  const payload = await request.json();
+  const payload = await readJson(request);
   const requestId = payload.requestId;
   const publishFields = payload.publishFields ?? {};
   const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
@@ -78,19 +81,18 @@ export async function POST(request) {
     return NextResponse.json({ error: "requestIdが必要です。" }, { status: 400 });
   }
 
-  const sourceRequest = await prisma.request.findUnique({
-    where: { id: requestId },
-  });
-
-  if (!sourceRequest) {
-    return NextResponse.json({ error: "依頼が見つかりません。" }, { status: 404 });
+  if (typeof requestId !== "string" || !publishFields || typeof publishFields !== "object" ||
+    Array.isArray(publishFields) || Object.values(publishFields).some((value) => value != null && typeof value !== "string") ||
+    checklist.length > 100 || checklist.some((item) => !item || typeof item.label !== "string" || !item.label.trim() ||
+      (item.note != null && typeof item.note !== "string"))) {
+    throw new ApiError(400, "クエストの入力内容が不正です。");
   }
-
-  if (sourceRequest.status !== "合意済み") {
-    return NextResponse.json({ error: "合意済みの依頼のみクエスト化できます。" }, { status: 400 });
-  }
-
-  const created = await prisma.$transaction(async (tx) => {
+  const created = await transaction(async (tx) => {
+    const sourceRequest = await tx.request.findUnique({ where: { id: requestId } });
+    if (!sourceRequest) throw new ApiError(404, "依頼が見つかりません。");
+    if (sourceRequest.status !== "合意済み" || !sourceRequest.requesterAgreed || !sourceRequest.receptionistAgreed) {
+      throw new ApiError(409, "合意済みの依頼のみクエスト化できます。");
+    }
     const quest = await tx.quest.create({
       data: {
         requestId: sourceRequest.id,
@@ -131,8 +133,8 @@ export async function POST(request) {
   const loaded = await prisma.quest.findUnique({
     where: { id: created.id },
     include: {
-      receptionist: true,
-      adventurer: true,
+      receptionist: { select: publicUserSelect },
+      adventurer: { select: publicUserSelect },
     },
   });
 
@@ -146,4 +148,4 @@ export async function POST(request) {
     },
     { status: 201 },
   );
-}
+});

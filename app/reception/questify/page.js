@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { readApiResponse } from "@/lib/api-client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -45,6 +46,9 @@ function QuestifyClient() {
   const requestId = searchParams.get("requestId");
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
+  const publishPending = useRef(false);
   const { user } = useSessionUser();
   const [checklistItems, setChecklistItems] = useState([{ label: "", note: "" }]);
   const [publishFields, setPublishFields] = useState(() =>
@@ -99,7 +103,10 @@ function QuestifyClient() {
   };
 
   const handlePublish = () => {
-    if (!requestId) return;
+    if (!requestId || !canPublish || publishPending.current) return;
+    publishPending.current = true;
+    setIsPublishing(true);
+    setPublishError("");
     return fetch("/api/quests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -113,11 +120,14 @@ function QuestifyClient() {
           }))
           .filter((item) => item.label),
       }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("クエスト化に失敗しました。");
-      }
-      router.push("/adventurer");
+    }).then(async (response) => {
+      await readApiResponse(response, "クエスト化に失敗しました。");
+      router.push("/reception");
+    }).catch((error) => {
+      setPublishError(error.message);
+    }).finally(() => {
+      publishPending.current = false;
+      setIsPublishing(false);
     });
   };
 
@@ -290,8 +300,9 @@ function QuestifyClient() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={handlePublish} disabled={!canPublish}>
-                クエストとして公開
+              {publishError ? <p role="alert" className="w-full text-sm text-red-700">{publishError}</p> : null}
+              <Button size="sm" onClick={handlePublish} disabled={!canPublish || isPublishing}>
+                {isPublishing ? "公開中..." : "クエストとして公開"}
               </Button>
               {!canPublish ? (
                 <span className="text-[11px] text-muted-foreground">合意済みの依頼のみ公開できます。</span>

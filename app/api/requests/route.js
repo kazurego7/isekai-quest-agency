@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/api-data";
+import { ApiError, readJson, withApiErrors } from "@/lib/api-handler";
 import { authOptions } from "@/lib/auth-options";
 import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
 
@@ -30,11 +32,14 @@ export async function GET(request) {
   }
 
   const requests = await prisma.request.findMany({
-    where: hasRequesterFilter ? { requesterId: trimmedRequesterId } : undefined,
+    where: {
+      ...(hasRequesterFilter ? { requesterId: trimmedRequesterId } : {}),
+      ...(isReceptionStaff(actor) ? { status: { not: "下書き" } } : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: {
-      requester: true,
-      receptionist: true,
+      requester: { select: publicUserSelect },
+      receptionist: { select: publicUserSelect },
     },
   });
 
@@ -47,7 +52,7 @@ export async function GET(request) {
   return NextResponse.json({ requests: payload });
 }
 
-export async function POST(request) {
+export const POST = withApiErrors(async (request) => {
   const session = await getServerSession(authOptions);
   const actor = assertAuthenticatedSession(session);
   if (!actor) {
@@ -56,7 +61,11 @@ export async function POST(request) {
   if (!isGeneralUser(actor)) {
     return NextResponse.json({ error: "依頼作成権限がありません。" }, { status: 403 });
   }
-  const payload = await request.json();
+  const payload = await readJson(request);
+  if (["title", "purpose", "location", "deadline", "risk", "reward", "requesterNote"].some(
+    (key) => payload[key] != null && (typeof payload[key] !== "string" || payload[key].length > 10000))) {
+    throw new ApiError(400, "依頼内容は各項目10000文字以内で入力してください。");
+  }
   const mode = payload.mode;
   const title = String(payload.title || "").trim();
   const requesterId = actor.id;
@@ -96,8 +105,8 @@ export async function POST(request) {
         receptionistAgreed: false,
       },
       include: {
-        requester: true,
-        receptionist: true,
+        requester: { select: publicUserSelect },
+        receptionist: { select: publicUserSelect },
       },
     });
 
@@ -133,8 +142,8 @@ export async function POST(request) {
       receptionistAgreed: false,
     },
     include: {
-      requester: true,
-      receptionist: true,
+      requester: { select: publicUserSelect },
+      receptionist: { select: publicUserSelect },
     },
   });
 
@@ -148,4 +157,4 @@ export async function POST(request) {
     },
     { status: 201 },
   );
-}
+});

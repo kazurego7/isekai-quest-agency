@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { readApiResponse } from "@/lib/api-client";
 import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -79,10 +80,8 @@ export default function AdventurerQuestDetail() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "apply" }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("申請に失敗しました。");
-      }
+    }).then(async (response) => {
+      await readApiResponse(response, "申請に失敗しました。");
       return fetch(`/api/quests/${normalizedQuest.id}`)
         .then((nextResponse) => nextResponse.json())
         .then((data) => {
@@ -98,6 +97,7 @@ export default function AdventurerQuestDetail() {
       label: photo.label ?? photo.name ?? "写真",
       name: photo.name ?? photo.label ?? "写真",
       size: photo.size ?? null,
+      url: photo.url,
     }));
     return fetch(`/api/quests/${normalizedQuest.id}`, {
       method: "PATCH",
@@ -108,10 +108,8 @@ export default function AdventurerQuestDetail() {
         checklist: reportComment?.checklist ?? [],
         photos: normalizedPhotos,
       }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("完了報告に失敗しました。");
-      }
+    }).then(async (response) => {
+      await readApiResponse(response, "完了報告に失敗しました。");
       router.push("/adventurer");
     });
   };

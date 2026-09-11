@@ -21,6 +21,7 @@ const statusStyle = {
   下書き: "outline",
   受注済み: "muted",
   クエスト進行中: "muted",
+  完了報告済み: "secondary",
   完了: "muted",
   合意済み: "secondary",
   クエスト化済み: "secondary",
