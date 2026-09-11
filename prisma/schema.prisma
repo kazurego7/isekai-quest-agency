@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Quest {
+  // クエスト
+  id           String   @id @default(uuid())
+  // 関連依頼ID
+  requestId    String?
+  // クエスト名
+  title        String
+  // 進行ステータス
+  status       String
+  // 受付担当者ユーザーID
+  receptionistId String?
+  // 冒険者ユーザーID
+  adventurerId   String?
+  // 報酬
+  reward       String?
+  // ランク制限
+  rank         String?
+  // 詳細
+  detail       String?
+  // 成果物
+  deliverables String?
+  // 支給物
+  supplies     String?
+  // 地図/注意事項
+  mapNotes     String?
+  // 危険度
+  risk         String?
+  // 連絡方法
+  channel      String?
+  // 募集枠
+  slots        String?
+  // 進行サマリ
+  summary      String?
+  // 完了報告コメント
+  reportComment String?
+  // 受付レビュー備考
+  reviewNote   String?
+  // 完了チェックリスト
+  checklist    Json?
+  // 写真一覧
+  photos       Json?
+  // 作成日時
+  createdAt    DateTime @default(now())
+  // 更新日時
+  updatedAt    DateTime @updatedAt
+
+  // 依頼との関連
+  request      Request? @relation(fields: [requestId], references: [id])
+  // 受付担当者との関連
+  receptionist User?    @relation("ReceptionistQuest", fields: [receptionistId], references: [id])
+  // 冒険者との関連
+  adventurer   User?    @relation("AdventurerQuest", fields: [adventurerId], references: [id])
+  // 選定済み冒険者
+  selectedAdventurers QuestAdventurer[]
+  // 申請済み冒険者
+  applications        QuestApplication[]
+}
+
+model Adventurer {
+  // 冒険者マスタ
+  id        String   @id @default(uuid())
+  // 連携ユーザーID
+  userId    String?  @unique
+  // 管理コード
+  code      String   @unique
+  // 冒険者名
+  name      String
+  // ランク
+  rank      String
+  // 役割
+  role      String
+  // メモ
+  note      String?
+  // 申請/推薦区分
+  source    String
+  // 申請日時（表示用テキスト）
+  appliedAt String?
+  // 作成日時
+  createdAt DateTime @default(now())
+  // 更新日時
+  updatedAt DateTime @updatedAt
+
+  // クエスト選定
+  questSelections QuestAdventurer[]
+  // クエスト申請
+  questApplications QuestApplication[]
+  // 連携ユーザー
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model QuestApplication {
+  // クエスト申請
+  questId      String
+  adventurerId String
+  // 申請日時
+  appliedAt    DateTime @default(now())
+
+  quest      Quest      @relation(fields: [questId], references: [id])
+  adventurer Adventurer @relation(fields: [adventurerId], references: [id])
+
+  @@id([questId, adventurerId])
+}
+
+model QuestAdventurer {
+  // クエスト選定（中間テーブル）
+  questId      String
+  adventurerId String
+  // 選定日時
+  selectedAt   DateTime @default(now())
+
+  quest       Quest      @relation(fields: [questId], references: [id])
+  adventurer  Adventurer @relation(fields: [adventurerId], references: [id])
+
+  @@id([questId, adventurerId])
+}
+
+model User {
+  // 画面操作ユーザー
+  id        String   @id @default(uuid())
+  // ユーザー区分（general/staff）
+  userType  String
+  // ロール（staff の場合は reception）
+  role      String
+  // ログインID（一意）
+  userId    String   @unique
+  // 表示名
+  displayName String
+  // 旧ログイン名（移行期間のみ保持）
+  name      String?
+  // パスワードハッシュ
+  passwordHash String
+  // 作成日時
+  createdAt DateTime @default(now())
+  // 更新日時
+  updatedAt DateTime @updatedAt
+
+  // 依頼者としての依頼
+  requesterRequests  Request[] @relation("RequesterRequests")
+  // 受付としての依頼
+  receptionistRequests Request[] @relation("ReceptionistRequests")
+  // 受付としてのクエスト
+  receptionistQuests Quest[] @relation("ReceptionistQuest")
+  // 冒険者としてのクエスト
+  adventurerQuests   Quest[] @relation("AdventurerQuest")
+  // 冒険者プロフィール
+  adventurerProfile Adventurer?
+}
+
+model Request {
+  // 依頼
+  id                String   @id @default(uuid())
+  // 依頼タイトル
+  title             String
+  // 進行ステータス
+  status            String
+  // 依頼者ユーザーID
+  requesterId       String?
+  // 受付ユーザーID
+  receptionistId    String?
+  // 目的・背景
+  purpose           String?
+  // 場所
+  location          String?
+  // 完了期限
+  deadline          String?
+  // 危険度・同行条件
+  risk              String?
+  // 報酬上限額
+  reward            String?
+  // 備考（依頼者メモ）
+  requesterNote     String?
+  // 受付メモ
+  notes             String?
+  // 概要
+  summary           String?
+  // 依頼者合意
+  requesterAgreed   Boolean  @default(false)
+  // 受付合意
+  receptionistAgreed Boolean @default(false)
+  // 作成日時
+  createdAt         DateTime @default(now())
+  // 更新日時
+  updatedAt         DateTime @updatedAt
+
+  // 関連クエスト
+  quests            Quest[]
+  // 依頼者ユーザー
+  requester         User?    @relation("RequesterRequests", fields: [requesterId], references: [id])
+  // 受付ユーザー
+  receptionist      User?    @relation("ReceptionistRequests", fields: [receptionistId], references: [id])
+}

@@ -1,34 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 異世界クエスト斡旋アプリ
 
-## Getting Started
+Next.js / NextAuth / Prisma / PostgreSQL による、依頼・合意・クエスト公開・冒険者選定・完了確認のアプリです。
 
-First, install dependencies and run the development server:
+## Windowsでのローカル開発
 
-```bash
-pnpm install
+Node.js 24 LTS（最低22.15）、pnpm 11.19.0、PowerShell 7、PostgreSQLのコマンド（`initdb`・`pg_ctl`・`psql`・`createdb`）が使える環境で実行します。
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm db:local
+pnpm db:push --skip-generate
+pnpm db:generate
+pnpm db:local:staff
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- 開発用DBは `.local/postgres` に保存し、`127.0.0.1:55432` でのみ接続を受け付けます。既存の5432番ポートのDBとは別です。
+- `db:local` は `.env.local` のDB接続先をこの開発用DBに設定します。既存の認証用シークレットなどは保持します。
+- 受付ユーザーのログイン情報は `.local/receptionist.txt` に保存します。再実行しても既存パスワードは変更しません。
+- 一般ユーザーは画面の「新規登録」から作成できます。
+- 2回目以降は `pnpm db:local` と `pnpm dev` で起動します。DBの停止は `pnpm db:local:stop` です。
+- `.local` と `.env.local` はGit管理対象外です。`.local/postgres` にはデータがあるため削除しないでください。
+- Prismaのコマンドも `.env.local` を読み込みます。環境変数を明示した場合はそちらが優先されます。
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Dockerを使う場合は `pnpm db:up` で `compose.yml` のDBを起動し、その接続先を `.env.local` に設定してください。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+テスト手順・写真の制限・Windowsでの注意事項は [docs/testing.md](docs/testing.md) を参照してください。
 
-## Learn More
+## ビルドと起動
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+pnpm lint
+pnpm build
+pnpm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
+本番環境では `DATABASE_URL`・`NEXTAUTH_URL`・十分にランダムな `NEXTAUTH_SECRET` を設定してください。
+本番でシークレットが未設定の場合は起動を拒否します。
 
 ## GitHub Actions + Vercel (build in CI)
 

@@ -1,0 +1,166 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import ConfirmActionButton from "../confirm-action-button";
+import { useRouter } from "next/navigation";
+import { useSessionUser } from "@/lib/session-user";
+import GeneralUserSwitch from "@/components/general-user-switch";
+
+const fields = [
+  { label: "依頼タイトル", key: "title", placeholder: "例: 討伐 / 湿地帯の魔蛇" },
+  { label: "目的・背景", key: "purpose", placeholder: "解決したい課題を記載" },
+  { label: "場所", key: "location", placeholder: "エリア / 合流地点" },
+  { label: "完了期限", key: "deadline", placeholder: "緊急度や希望日程" },
+  { label: "危険度・同行条件", key: "risk", placeholder: "必要な人数・装備・特殊条件" },
+  { label: "報酬上限額", key: "reward", placeholder: "分からなければ上限だけ" },
+];
+
+export default function NewRequestPage() {
+  const router = useRouter();
+  const { user } = useSessionUser();
+  const [formState, setFormState] = useState(() =>
+    fields.reduce((acc, field) => {
+      acc[field.key] = "";
+      return acc;
+    }, { requesterNote: "" }),
+  );
+
+  const canSubmit = useMemo(() => {
+    return Boolean(formState.title) && Boolean(user?.id);
+  }, [formState, user]);
+  const canSaveDraft = useMemo(() => {
+    return Boolean(user?.id);
+  }, [user]);
+
+  const handleChange = (label, value) => {
+    setFormState((prev) => ({ ...prev, [label]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    return fetch("/api/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: formState.title,
+        purpose: formState.purpose,
+        location: formState.location,
+        deadline: formState.deadline,
+        risk: formState.risk,
+        reward: formState.reward,
+        requesterNote: formState.requesterNote,
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("依頼の作成に失敗しました。");
+      }
+      router.refresh();
+    });
+  };
+
+  const handleDraftSave = async () => {
+    if (!canSaveDraft) return;
+    const response = await fetch("/api/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "draft",
+        title: formState.title,
+        purpose: formState.purpose,
+        location: formState.location,
+        deadline: formState.deadline,
+        risk: formState.risk,
+        reward: formState.reward,
+        requesterNote: formState.requesterNote,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("下書きの保存に失敗しました。");
+    }
+    const data = await response.json();
+    if (data?.request?.id) {
+      router.push(`/requests/requester/${data.request.id}`);
+      return;
+    }
+    router.refresh();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+      <div className="mx-auto max-w-screen-sm px-5 pb-16 pt-8 space-y-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.32em] text-primary">New</p>
+            <h1 className="font-serif text-2xl">新規依頼作成</h1>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <GeneralUserSwitch currentArea="requests" />
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/requests">一覧へ</Link>
+            </Button>
+          </div>
+        </header>
+
+        <Card className="border border-primary/15 bg-white/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">必要な入力</CardTitle>
+            <CardDescription>入力後に送信すると受付のキューへ登録されます。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {fields.map((field) => (
+              <label key={field.key} className="space-y-1">
+                <span className="block text-sm font-semibold text-ink">{field.label}</span>
+                <input
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                  placeholder={field.placeholder}
+                  value={formState[field.key]}
+                  onChange={(event) => handleChange(field.key, event.target.value)}
+                />
+              </label>
+            ))}
+            <label className="space-y-1">
+              <span className="block text-sm font-semibold text-ink">備考・添付</span>
+              <textarea
+                className="h-28 w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
+                placeholder="受付嬢へのメモを記載"
+                value={formState.requesterNote}
+                onChange={(event) => handleChange("requesterNote", event.target.value)}
+              />
+            </label>
+          </CardContent>
+          <CardFooter className="flex flex-wrap gap-2">
+            <ConfirmActionButton
+              href="/requests"
+              requireConfirm
+              confirmTitle="この内容で送信しますか？"
+              confirmMessage="送信後は編集できません。"
+              confirmLabel="送信する"
+              variant="default"
+              size="sm"
+              onConfirm={handleSubmit}
+              className={!canSubmit ? "pointer-events-none opacity-50" : undefined}
+            >
+              送信
+              </ConfirmActionButton>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleDraftSave}
+              className={!canSaveDraft ? "pointer-events-none opacity-50" : undefined}
+            >
+              下書きを保存
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/">ホームに戻る</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+      </div>
+    </div>
+  );
+}

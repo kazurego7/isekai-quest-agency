@@ -1,66 +1,36 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import LoginForm from "@/components/login-form";
+import { authOptions } from "@/lib/auth-options";
+import { resolveRoleHome } from "@/lib/role-route";
+
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  const role = session?.user?.role;
+  const userType = session?.user?.userType;
+  const homePath = resolveRoleHome(userType, role);
+
+  if (role && homePath !== "/") {
+    redirect(homePath);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.js file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
+      <div className="mx-auto max-w-screen-sm px-6 pb-16 pt-16 space-y-8">
+        <header className="space-y-2 text-center">
+          <p className="text-xs uppercase tracking-[0.32em] text-primary">Isekai Quest Agency</p>
+          <h1 className="font-serif text-3xl text-ink">ログイン</h1>
+          <p className="text-sm text-muted-foreground">
+            ログイン後、ロールに応じたホーム画面へ自動で移動します。
           </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </header>
+
+        <LoginForm />
+        <p className="text-center text-xs text-muted-foreground">
+          アカウント未作成の場合は <a className="underline" href="/signup">新規登録</a> へ
+        </p>
+      </div>
     </div>
   );
 }

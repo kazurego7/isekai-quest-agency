@@ -1,5 +1,14 @@
 packages:
   - .
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  sharp: false
+  unrs-resolver: false
+overrides:
+  'picomatch@>=4.0.0 <4.0.4': 4.0.7
+  'yaml@>=2.0.0 <2.8.3': 2.9.1
+  'browserslist@>=4.0.0 <4.28.7': 4.28.9
+  # Prisma 6 pins v7; v8 fixes recursive graph exhaustion in config merging.
+  '@prisma/config@6.19.3>deepmerge-ts': 8.0.0
