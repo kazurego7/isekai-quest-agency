@@ -1,60 +1,130 @@
-# 異世界クエスト斡旋アプリ
+# 異世界クエスト斡旋アプリ — Sites版
 
-Next.js / NextAuth / Prisma / PostgreSQL による、依頼・合意・クエスト公開・冒険者選定・完了確認のアプリです。
+このプロジェクトの正式版です。Sites版の画面・API・D1・R2をプロジェクト直下で管理します。旧NextAuth・Prisma・PostgreSQL版とVercelへの自動デプロイは廃止しました。
 
-## Windowsでのローカル開発
+## 毎日の起動
 
-Node.js 24 LTS（最低22.15）、pnpm 11.19.0、PowerShell 7、PostgreSQLのコマンド（`initdb`・`pg_ctl`・`psql`・`createdb`）が使える環境で実行します。
+Windowsログイン時は既存のスタートアップから `scripts/start-background.ps1` が事前ビルドしたSites版を起動します。Tailscaleを接続してください。手動の場合はプロジェクト直下で `npm run start:tailscale` を実行します。
+
+- ローカル: http://127.0.0.1:5177/isekai/
+- Tailscale: https://pc-win.tail5f79dc.ts.net/isekai/
+- Tailscaleを使わない通常の開発: `npm run dev` → http://127.0.0.1:5177/
+
+どちらの起動方法も5177を使用するため、同時には起動しません。保存先は共通の `.wrangler/state` です。移設済みの環境でDBを初期化し直さないでください。ログは `.local/app-dev.log` と `.local/app-dev-error.log` に保存します。
+
+### 低速回線向けの配信と更新
+
+初回とコード変更後は、起動中の配信サーバーと内部Workerを停止してから `npm run build:tailscale` を実行し、起動し直します。通常利用は事前ビルド、Brotli/gzip圧縮、ハッシュ付き静的ファイルの長期キャッシュを使用します。HTML・API・非公開の添付は共有キャッシュに保存しません。背景は端末幅に応じたWebP、アイコンは表示サイズに合わせた画像を使います。
+
+ローカル用ビルドは `.local/tailscale-build`、公開用ビルドは `dist` に分離します。ローカル用だけが受付・冒険者の切り替えを有効にします。起動時に5177で圧縮配信し、内部のWorkerを127.0.0.1:5178で起動します。Tailscaleからは引き続き5177だけに転送してください。
+
+画面を編集中に即時反映したい場合のみ `npm run dev:tailscale` を使います。変更を反映するには、編集後に再ビルドして通常配信へ戻します。配信の回帰検証は起動中に `node --test tests/tailscale-delivery.test.mjs` を実行します。
+
+## ログインと権限
+
+ChatGPTログインを使用します。旧ユーザーID・パスワードでの新規登録やログインはありません。
+Sitesは最初は本人限定で公開します。公開後、所有者が最初にログインすると受付として登録されます。その後、共有された利用者は一般ユーザー（依頼者・冒険者）になります。最初のログインを済ませてから共有してください。
+利用者の識別にはSitesが付与するユーザーIDを使い、メールアドレスを権限判定には使いません。依頼やクエストの権限はAPIで検証します。
+
+## 保存先
+
+依頼・クエスト・利用者・選定はSitesのD1、写真はR2に保存します。写真は元の制限と同じくJPEG・PNG・WebP、最大5枚、1枚1MiB・合計2MiBです。写真の取得にもログインとクエストの閲覧権限が必要です。
+更新時はレコードのrevisionをD1のバッチ内で検証します。競合すれば関連する変更をまとめて取り消し、409を返します。公開の重複もDBの一意制約で防ぎます。
+
+ローカル実行時のD1・R2は `.wrangler/state` に保存します。ローカルデータと公開Siteのデータは別です。旧ローカル環境・旧DB・復旧用データは削除しました。
+
+## ローカルでの動作確認
+
+Node.js 24以降を使用します。
 
 ```powershell
-pnpm install --frozen-lockfile
-pnpm db:local
-pnpm db:push --skip-generate
-pnpm db:generate
-pnpm db:local:staff
-pnpm dev
+npm ci
+npm run build
+Get-ChildItem drizzle/*.sql | Sort-Object Name | ForEach-Object {
+  node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file $_.FullName
+  if ($LASTEXITCODE -ne 0) { throw "DB初期化に失敗しました。" }
+}
+npm run dev
 ```
 
-- 開発用DBは `.local/postgres` に保存し、`127.0.0.1:55432` でのみ接続を受け付けます。既存の5432番ポートのDBとは別です。
-- `db:local` は `.env.local` のDB接続先をこの開発用DBに設定します。既存の認証用シークレットなどは保持します。
-- 受付ユーザーのログイン情報は `.local/receptionist.txt` に保存します。再実行しても既存パスワードは変更しません。
-- 一般ユーザーは画面の「新規登録」から作成できます。
-- 2回目以降は `pnpm db:local` と `pnpm dev` で起動します。DBの停止は `pnpm db:local:stop` です。
-- `.local` と `.env.local` はGit管理対象外です。`.local/postgres` にはデータがあるため削除しないでください。
-- Prismaのコマンドも `.env.local` を読み込みます。環境変数を明示した場合はそちらが優先されます。
-
-Dockerを使う場合は `pnpm db:up` で `compose.yml` のDBを起動し、その接続先を `.env.local` に設定してください。
-
-テスト手順・写真の制限・Windowsでの注意事項は [docs/testing.md](docs/testing.md) を参照してください。
-
-## ビルドと起動
+上記のDB初期化コマンドは新規環境の初回だけ実行してください。以後は新しい未適用マイグレーションだけを `--file drizzle/対象ファイル.sql` で適用します。
+表示されたローカルURLを開き、上部の「受付」「冒険者A」「冒険者B」「未ログイン」で検証できます。切り替えは開発サーバーだけの機能で、公開用Workerには実装されません。
 
 ```powershell
-pnpm lint
-pnpm build
-pnpm start
+npm run test:integration
 ```
 
-ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
-本番環境では `DATABASE_URL`・`NEXTAUTH_URL`・十分にランダムな `NEXTAUTH_SECRET` を設定してください。
-本番でシークレットが未設定の場合は起動を拒否します。
+実D1・R2を使い、依頼作成・調整・合意・公開・単独/複数選定・写真保存・差し戻し・完了承認・競合・権限を検証します。検証用のデータはローカルDBに残します。Tailscale用の起動中は `$env:TEST_BASE_URL = 'http://127.0.0.1:5177/isekai'` を指定してください。
 
-## GitHub Actions + Vercel (build in CI)
+公開用ビルドの認証境界も確認できます。別のターミナルで実行します。
 
-This repo ships with `.github/workflows/vercel-deploy.yml` to build on GitHub Actions and deploy via the Vercel CLI.
-
-Required repository secrets:
-
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-To get the IDs, run locally:
-
-```bash
-pnpm dlx vercel@latest login
-pnpm dlx vercel@latest link
-cat .vercel/project.json
+```powershell
+npm run build
+npm start -- --port 8789
 ```
 
-Then add the values to GitHub repository secrets.
+```powershell
+$env:TEST_PRODUCTION_URL = 'http://127.0.0.1:8789'
+node --test tests/production-auth.test.mjs
+```
+
+公開用ビルドでは、検証用Cookieを送ってもログインできず、検証用の切り替えURLは404になります。本物のChatGPTログインはSites上で行います。
+
+## 公開
+
+Sitesプラグインのビルド・保存・公開手順を使用します。`.openai/hosting.json` の既存project_idを再利用してください。
+D1の適用済みマイグレーションは書き換えず、新しいマイグレーションを追加します。
+
+## 外観の設定
+
+ユーザー設定（/settings）でシステムデフォルト・ライト固定・ダーク固定を選択し、保存できます。既定は端末の外観設定に連動します。選択は users.themePreference に保存され、別端末でも同じアカウントで引き継がれます。
+
+## 条件調整の確認
+
+依頼の状態は閲覧者に合わせて表示します。送信側は「合意待ち」、受信側は「確認前」です。調整時に直前の条件を保存し、受信側の確認画面で変更項目と調整理由を表示します。導入前の調整には変更前データがないため、比較できない旨を表示します。
+
+`node --test tests/request-comparison.test.mjs` で提案の往復・条件の削除・比較対象の保持・状態表示・閲覧権限を検証します。
+
+## Tailscaleでの確認
+
+通常の開発サーバーを終了し、`npm run build:tailscale` → `npm run start:tailscale` で起動します。Tailscaleを接続した端末から https://pc-win.tail5f79dc.ts.net/isekai/ を開けます。PC上では http://127.0.0.1:5177/isekai/ を使用します。
+
+Serveには `/isekai` → `http://127.0.0.1:5177/isekai` を登録済みです。他のServeルートは維持しています。ローカル用の受付・冒険者切り替えを使用でき、保存先は同じローカルDBです。通常の `npm run dev` と公開用ビルドはルートパスで動作します。
+
+## 公開準備と情報の公開範囲
+
+依頼書から名称・種別・内容・場所・期限・備考を公開用の編集画面へ転記します。公開内容はquestsに独立して保存し、依頼書の原文や交渉履歴は変更しません。添付は初期状態では非公開で、受付が選んだ資料のみクエスト専用の閲覧URLから配信します。冒険者は元の依頼書の添付URLを参照できません。
+
+新しい公開形式では、クエストランク・募集人数・達成条件・依頼金額・仲介料率が必要です。最低参加ランクは任意で、応募・選定時に検証します。仲介料は初期値10％（公開時に変更可能）、金額はG単位の整数で、仲介料の端数は切り捨てます。分配は均等（余りは代表者へ）を初期値とし、独自の分配方法も記載できます。集合日時は日本時間として扱います。
+
+公開内容の確認画面と公開後の詳細画面は同じ表示部品を使います。画像は画面内でプレビューし、PDFは別タブで開きます。公開済みの旧形式クエストは従来の表示を維持しますが、旧形式の依頼添付の自動公開は行いません。
+
+公開処理・報酬計算・非公開情報・添付の選択・参加条件は `tests/public-quest.test.mjs`、既存の一連の進行は `tests/quest-flow.test.mjs` で検証できます。
+
+## 必須項目と下書き
+
+依頼の送信時は名称・種別・内容が必須です。場所は未定、期限は未定、予算は相談を選択できます。日付・金額を指定する場合は値が必要ですが、未入力の途中状態は下書きに保存できます。空の依頼名には表示上の代替名を保存せず、再読込後も未入力として扱います。
+
+公開時は名称・種別・内容・場所の案内方法・期限・ランク・募集人数・達成条件1件以上・依頼金額・仲介料率・分配方法を検証します。場所は地域または場所の記載、あるいは「参加決定後に案内」を選択します。後日案内の場合、公開データから具体的な地域・場所を除外します。期限は日付か期限なしを選択し、未定のまま公開できません。依頼金額の0 Gは無報酬として明示します。
+
+受付の公開準備の下書きはpublicationDraftsに保存し、未入力でも保存・再開できます。依頼者・冒険者には閲覧できません。revisionで競合を検出し、公開成功時に削除します。集合・出発が空欄なら「参加決定後に調整」と表示します。必須項目と下書きの検証はtests/required-fields.test.mjsにまとめています。
+
+公開準備では、依頼書から選ぶ資料に加えて、受付が画像（JPEG・PNG・WebP）やPDFを追加できます。合計5件・10MBまで、1件5MBまでです。追加資料は元の依頼書を変更せず、公開準備の下書きに保存します。公開前は受付のみ閲覧でき、公開後はクエスト用のURLから閲覧できます。PDFは別タブ、画像は画面内でプレビューします。保存・削除・公開と同時更新の検証は `tests/publication-files.test.mjs` にまとめています。
+
+## 役割・状態に合う画面
+
+依頼者と冒険者は同じ一般ユーザーが兼ねられます。「自分の依頼」では本人の依頼、「クエストボード」では募集中または自分が担当するクエストを表示します。受付用URLを一般ユーザーが開いた場合や、その逆の場合は、本人の役割に合う画面へ案内します。他人の非公開依頼・受付からの下書き閲覧は許可しません。
+
+受付の選定画面は募集中だけです。開始後は進捗、報告後は承認・差し戻し、完了後は記録の閲覧に切り替えます。冒険者の申請は未申請かつ参加ランク条件を満たす場合に限り、成果報告は進行中の担当者だけが操作できます。合意待ち・公開済みの依頼は調整編集へ進めません。未ログインではログイン画面を表示し、自動的に検証ユーザーへ切り替えません。
+
+`tests/role-state.test.mjs` は下書きから完了・差し戻しまで11状態を、受付・依頼者・担当冒険者・担当外・未認証の組み合わせで検証します。
+
+2026-09-12のローカルサンプル確認で旧公開形式5件を更新しました。進行状態・応募・選定・成果は保持しています。過去サンプルの表示済み報酬を保つため、その5件の仲介料は0％としています。新規公開の既定10％は従来どおりです。検証用冒険者のランク保存値もマスタの1文字形式へ揃えています。
+
+## 公開後の共通クエスト画面
+
+公開後は `/quests/:id` を共通の詳細画面とし、自分の依頼・クエストボード・受付デスクから同じ画面へ進みます。依頼一覧も公開後は公開名・クエストの現在の状態を表示します。以前の詳細URLも共通画面へ案内します。
+
+操作は入口ではなく本人の役割とクエストの状態で決まります。依頼者は参加者でなくても自分のクエストの進捗・成果を閲覧できますが、成果報告は担当冒険者だけです。受付の選定・承認も既存の状態制約を維持します。
+
+原本は依頼者と受付だけに表示する「元の依頼書・条件の調整を見る」から開けます。`?document=1` は表示の指定にすぎず、サーバーで本人・受付の権限を別途検証します。保存されている直前の条件調整は原本内で確認できます。公開画面へ原本の非公開メモや添付を自動表示しません。

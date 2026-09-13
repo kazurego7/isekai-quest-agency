@@ -1,326 +1,47 @@
 "use client";
-
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { readApiResponse } from "@/lib/api-client";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSessionUser } from "@/lib/session-user";
-const publishFieldLabels = [
-  { key: "rank", label: "冒険者ランク制限", placeholder: "Bランク以上" },
-  { key: "slots", label: "募集人数・役割", placeholder: "3名（前衛1 / 後衛1 / 支援1）" },
-  { key: "detail", label: "クエスト詳細", placeholder: "討伐地点の状況や注意点を記載" },
-  { key: "deliverables", label: "成果物・評価基準", placeholder: "討伐証明部位 + 現地写真。傷/欠損がないこと" },
-  { key: "supplies", label: "ギルド支給物", placeholder: "解毒薬2本 / 地図 / 簡易テント / 松明" },
-  { key: "mapNotes", label: "地図・注意事項", placeholder: "沼地東側の浅瀬を推奨。夜間は迂回。毒沼に立入禁止" },
-  { key: "channel", label: "連絡方法", placeholder: "魔法通信 / 緊急時は鐘楼" },
-];
-
-export default function QuestifyPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
-          <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10">
-            <Card className="border border-dashed border-border/60 bg-white/80 shadow-sm">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
-                <CardDescription>依頼内容を取得しています。</CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      }
-    >
-      <QuestifyClient />
-    </Suspense>
-  );
-}
-
-function QuestifyClient() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const requestId = searchParams.get("requestId");
-  const [request, setRequest] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishError, setPublishError] = useState("");
-  const publishPending = useRef(false);
-  const { user } = useSessionUser();
-  const [checklistItems, setChecklistItems] = useState([{ label: "", note: "" }]);
-  const [publishFields, setPublishFields] = useState(() =>
-    publishFieldLabels.reduce((acc, field) => {
-      acc[field.key] = "";
-      return acc;
-    }, {}),
-  );
-
-  useEffect(() => {
-    if (!requestId) return;
-    let active = true;
-    fetch(`/api/requests/${requestId}`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (!active) return;
-        setRequest(data.request ?? null);
-      })
-      .catch(() => {
-        if (!active) return;
-        setRequest(null);
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [requestId]);
-
-  const canPublish = useMemo(() => {
-    return request?.status === "合意済み" && Boolean(user?.id);
-  }, [request, user]);
-
-  const handleFieldChange = (key, value) => {
-    setPublishFields((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const updateChecklistItem = (index, key, value) => {
-    setChecklistItems((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)),
-    );
-  };
-
-  const addChecklistItem = () => {
-    setChecklistItems((prev) => [...prev, { label: "", note: "" }]);
-  };
-
-  const removeChecklistItem = (index) => {
-    setChecklistItems((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const handlePublish = () => {
-    if (!requestId || !canPublish || publishPending.current) return;
-    publishPending.current = true;
-    setIsPublishing(true);
-    setPublishError("");
-    return fetch("/api/quests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        publishFields,
-        checklist: checklistItems
-          .map((item) => ({
-            label: String(item.label ?? "").trim(),
-            note: String(item.note ?? "").trim(),
-          }))
-          .filter((item) => item.label),
-      }),
-    }).then(async (response) => {
-      await readApiResponse(response, "クエスト化に失敗しました。");
-      router.push("/reception");
-    }).catch((error) => {
-      setPublishError(error.message);
-    }).finally(() => {
-      publishPending.current = false;
-      setIsPublishing(false);
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
-        <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10">
-          <Card className="border border-dashed border-border/60 bg-white/80 shadow-sm">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-base text-ink">読み込み中...</CardTitle>
-              <CardDescription>依頼内容を取得しています。</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (!request) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
-        <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10">
-          <Card className="border border-dashed border-border/60 bg-white/80 shadow-sm">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-base text-ink">依頼が見つかりません</CardTitle>
-              <CardDescription>合意済みの依頼を一覧から選んでください。</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/reception">受付コンソールへ戻る</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/70">
-      <div className="mx-auto max-w-screen-xl px-6 pb-16 pt-10 space-y-8">
-        <header className="flex items-center justify-between">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.32em] text-primary">Questify</p>
-            <h1 className="font-serif text-2xl text-ink">クエスト化</h1>
-            <p className="text-sm text-muted-foreground">
-              依頼者と合意済みの内容に、冒険者向け公開項目を追加してクエスト票を作成します。
-            </p>
-          </div>
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/reception">受付コンソールへ戻る</Link>
-          </Button>
-        </header>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="border-primary/15 bg-white/90 shadow-sm">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-primary">{request.id}</p>
-                  <CardTitle className="text-lg text-ink">{request.title}</CardTitle>
-                  <CardDescription>依頼者から送信された情報を表示しています。</CardDescription>
-                </div>
-                <Badge variant="secondary">{request.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">依頼者</span>
-                <span className="text-ink text-right">{request.requesterName ?? "未設定"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">依頼タイトル</span>
-                <span className="text-ink text-right">{request.title ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">目的・背景</span>
-                <span className="text-ink text-right">{request.purpose ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">場所</span>
-                <span className="text-ink text-right">{request.location ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">完了期限</span>
-                <span className="text-ink text-right">{request.deadline ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">危険度・同行条件</span>
-                <span className="text-ink text-right">{request.risk ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">報酬上限額</span>
-                <span className="text-ink text-right">{request.reward ?? "-"}</span>
-              </div>
-              <div className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground">備考</span>
-                <span className="text-ink text-right">{request.requesterNote ?? "-"}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/15 bg-white/90 shadow-sm">
-            <CardHeader className="space-y-1">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-ink">冒険者向け公開項目</CardTitle>
-                <Badge variant="secondary">公開前に必須</Badge>
-              </div>
-              <CardDescription>ランク制限や成果物など、公開文面に載せる追加項目を入力します。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {publishFieldLabels.map((field) => (
-                <label key={field.key} className="space-y-1 block">
-                  <span className="text-sm font-semibold text-ink">{field.label}</span>
-                  <input
-                    className="w-full rounded-lg border border-primary/40 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                    placeholder={field.placeholder}
-                    value={publishFields[field.key]}
-                    onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                  />
-                </label>
-              ))}
-              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/40 p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-ink">成果チェックリスト</p>
-                    <p className="text-xs text-muted-foreground">冒険者が完了報告時にチェックする項目です。</p>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={addChecklistItem}>
-                    追加
-                  </Button>
-                </div>
-                {checklistItems.map((item, index) => (
-                  <div
-                    key={`check-${index}`}
-                    className="space-y-2 rounded-lg border border-border/60 bg-white/80 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">項目 {index + 1}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs text-muted-foreground"
-                        onClick={() => removeChecklistItem(index)}
-                        disabled={checklistItems.length <= 1}
-                      >
-                        削除
-                      </Button>
-                    </div>
-                    <label className="space-y-1 block">
-                      <span className="text-xs font-semibold text-ink">チェック項目</span>
-                      <input
-                        className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                        placeholder="例: 成果物の写真を提出"
-                        value={item.label}
-                        onChange={(event) => updateChecklistItem(index, "label", event.target.value)}
-                      />
-                    </label>
-                    <label className="space-y-1 block">
-                      <span className="text-xs font-semibold text-ink">補足メモ</span>
-                      <input
-                        className="w-full rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/50"
-                        placeholder="例: 提出時に傷がないことを確認"
-                        value={item.note}
-                        onChange={(event) => updateChecklistItem(index, "note", event.target.value)}
-                      />
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-wrap gap-2">
-              {publishError ? <p role="alert" className="w-full text-sm text-red-700">{publishError}</p> : null}
-              <Button size="sm" onClick={handlePublish} disabled={!canPublish || isPublishing}>
-                {isPublishing ? "公開中..." : "クエストとして公開"}
-              </Button>
-              {!canPublish ? (
-                <span className="text-[11px] text-muted-foreground">合意済みの依頼のみ公開できます。</span>
-              ) : null}
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/reception">公開せず戻る</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-
-        <Card className="border-none bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">メモ</CardTitle>
-            <CardDescription>クエスト化すると「合意済み」から「クエスト化済み」に状態が遷移し、冒険者側ダッシュボードに表示されます。</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    </div>
-  );
+import { Suspense,useState,useRef } from 'react';
+import Link from 'next/link';
+import { useRouter,useSearchParams } from 'next/navigation';
+import { Flag,Plus,Trash2,Eye,ArrowLeft,Save } from 'lucide-react';
+import { Button } from '@/components/quest-ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PageHeading,LoadState,EmptyState,useRecords } from '@/components/quest-workspace';
+import { useSessionUser } from '@/lib/session-user';
+import { requestTypes,requestRegions,requestDisplayFields,REQUEST_FILE_COUNT,REQUEST_TOTAL_BYTES } from '@/lib/request-options';
+import { initialPublicBrief,validatePublicBrief,questRanks,rewardBreakdown,gold,briefLocation,briefDeadline } from '@/lib/public-quest';
+import { appFetch } from '@/lib/app-path';
+import PublicQuestDetails from '@/components/public-quest-details';
+import RequestAttachments from '@/components/request-attachments';
+export default function QuestifyPage(){return <Suspense fallback={<LoadState loading/>}><QuestifyLoader/></Suspense>;}
+function QuestifyLoader(){const id=useSearchParams().get('requestId');return id?<RequestLoader key={id} id={id}/>:<div className="page-wrap"><EmptyState title="公開する依頼を選択してください"><Link href="/reception">受付デスクへ戻る</Link></EmptyState></div>;}
+function RequestLoader({id}){const state=useRecords([`/api/requests/${id}`,`/api/requests/${id}/publication-draft`]);if(state.loading||state.error)return <LoadState {...state}/>;if(state.data[0].request.status!=='合意済み')return <div className="page-wrap"><EmptyState title="この依頼は公開準備の対象ではありません" description="依頼の現在の状態を確認してください。"><Button asChild><Link href={`/requests/reception/${id}`}>依頼書を確認</Link></Button></EmptyState></div>;return <PublicBriefEditor key={id} request={state.data[0].request} draft={state.data[1].draft}/>;}
+function PublicBriefEditor({request,draft}){
+ const router=useRouter(),{user}=useSessionUser();const [fields,setFields]=useState(()=>({...initialPublicBrief(request),...draft?.fields})),[checklist,setChecklist]=useState(draft?.checklist??[{label:'',note:''}]),[attachmentIds,setAttachmentIds]=useState((draft?.attachmentIds??[]).filter(id=>request.attachments.some(f=>f.id===id))),[preview,setPreview]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');const busy=useRef(false);const [additionalAttachments,setAdditionalAttachments]=useState(draft?.additionalAttachments??[]),[filesBusy,setFilesBusy]=useState(false);const [draftRevision,setDraftRevision]=useState(draft?.revision??null),[saveNotice,setSaveNotice]=useState(draft?'保存した下書きを読み込みました。':'');
+ const canPublish=request.status==='合意済み'&&user?.userType==='staff';
+ const set=(key,value)=>setFields(f=>({...f,[key]:value}));
+ const cleanChecklist=checklist.map(x=>({label:x.label.trim(),note:x.note.trim()})).filter(x=>x.label);
+ const validation=validatePublicBrief(fields,cleanChecklist),money=rewardBreakdown(fields.grossReward??0,fields.commissionRate??0);
+ const selectedFiles=request.attachments.filter(f=>attachmentIds.includes(f.id));
+ const combinedFiles=[...selectedFiles,...additionalAttachments];
+ const attachmentIssue=combinedFiles.length>REQUEST_FILE_COUNT?"添付は依頼書の資料と合わせて5件までです。":combinedFiles.reduce((sum,file)=>sum+file.bytes,0)>REQUEST_TOTAL_BYTES?"添付は依頼書の資料と合わせて合計10MBまでです。":"";
+ const quest={...fields,...money,publishVersion:1,location:briefLocation(fields),deadline:briefDeadline(fields),checklist:cleanChecklist,requestAttachments:combinedFiles,receptionistName:user?.displayName};
+ function showPreview(){if(filesBusy)return;if(validation||attachmentIssue){setError(validation||attachmentIssue);window.scrollTo({top:0});return;}setError('');setPreview(true);window.scrollTo({top:0});}
+ async function publish(){if(busy.current||filesBusy||!canPublish||validation||attachmentIssue)return;busy.current=true;setPending(true);setError('');try{const response=await appFetch('/api/quests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:request.id,publishFields:fields,checklist:cleanChecklist,attachmentIds,additionalAttachments,draftRevision})});const data=await response.json();if(!response.ok)throw Error(data.error||'公開できませんでした。');router.push('/quests/'+data.quest.id);}catch(e){setError(e.message);}finally{busy.current=false;setPending(false);}}
+ async function saveDraft(){if(busy.current||filesBusy||!canPublish)return;busy.current=true;setPending(true);setError('');setSaveNotice('');try{const response=await appFetch(`/api/requests/${request.id}/publication-draft`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,checklist,attachmentIds,additionalAttachments,revision:draftRevision})});const data=await response.json();if(!response.ok)throw Error(data.error||'下書きを保存できませんでした。');setDraftRevision(data.draft.revision);setAdditionalAttachments(data.draft.additionalAttachments??[]);setSaveNotice('下書きを保存しました。あとから続きを編集できます。');}catch(e){setError(e.message);window.scrollTo({top:0});}finally{busy.current=false;setPending(false);}}
+ const textField=(key,label,placeholder,rows)=> <label className="guild-field" key={key}><span>{label}{["title","detail","distributionNote"].includes(key)&&<small className="required-mark" aria-hidden="true">必須</small>}</span>{rows?<textarea aria-label={label} aria-required={["detail","distributionNote"].includes(key)} rows={rows} maxLength={10000} value={fields[key]||''} placeholder={placeholder} onChange={e=>set(key,e.target.value)}/>:<input aria-label={label} aria-required={key==='title'} maxLength={key==='title'?200:10000} value={fields[key]||''} placeholder={placeholder} onChange={e=>set(key,e.target.value)}/>}</label>;
+ return <div className="page-wrap publish-page"><PageHeading eyebrow="PREPARE THE ADVENTURE" title="公開の準備" description="依頼書を転記しました。必要な部分だけ整えて、冒険者に届けましょう。"><Button asChild variant="ghost"><Link href="/reception">受付デスクへ戻る</Link></Button></PageHeading>
+ {error&&<p className="action-error" role="alert">{error}</p>}
+ {!canPublish&&<p className="notice-banner">合意済みの依頼を受付が公開できます。</p>}
+ {preview?<><p className="publish-preview-label"><Eye size={18}/>冒険者に公開する内容</p><section className="guild-document"><header className="document-heading"><Flag size={24}/><h2>{fields.title}</h2></header><div className="document-body"><PublicQuestDetails quest={quest}/></div><footer className="document-actions"><Button variant="outline" disabled={pending} onClick={()=>setPreview(false)}><ArrowLeft size={16}/>編集に戻る</Button><Button disabled={pending||filesBusy||!canPublish} onClick={publish}><Flag size={16}/>{pending?'公開中…':'この内容で公開'}</Button></footer></section></>:
+ <><details className="publish-source"><summary>元の依頼書を参照する（依頼者・受付のみ）</summary><dl className="document-details">{requestDisplayFields.map(f=><div key={f.key}><dt>{f.label}</dt><dd>{f.value(request)}</dd></div>)}</dl><Link href={`/requests/reception/${request.id}`}>依頼書を開く</Link></details>
+ <form noValidate onChange={()=>{setSaveNotice('');setError('');}} onSubmit={e=>{e.preventDefault();showPreview();}}><fieldset disabled={!canPublish||pending||filesBusy} className="publish-fieldset"><section className="guild-document"><header className="document-heading"><Flag size={24}/><div><h2>冒険者に伝えること</h2><p className="quiet text-sm">転記した内容は自由に編集できます。元の依頼書は変わりません。</p></div></header><div className="document-body publish-fields"><p className="form-requirements">必須項目は公開時に確認します。未入力でも下書き保存できます。</p>
+ <section><h3>任務の案内</h3><div className="form-grid">{textField('title','名称','',0)}<label className="guild-field"><span>種別 <small className="required-mark" aria-hidden="true">必須</small></span><select aria-label="種別" aria-required="true" value={fields.categoryId} onChange={e=>set('categoryId',e.target.value)}><option value="">種別を選択</option>{requestTypes.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>{textField('detail','任務の内容','冒険者に伝える内容',5)}<label className="guild-field"><span>場所の案内 <small className="required-mark" aria-hidden="true">必須</small></span><select aria-label="場所の案内" aria-required="true" value={fields.locationMode} onChange={e=>set('locationMode',e.target.value)}><option value="unknown">案内方法を選択</option><option value="specified">場所を記載する</option><option value="after-selection">参加決定後に案内</option></select></label>{fields.locationMode==='specified'&&<><div className="form-grid"><label className="guild-field"><span>地域</span><select aria-label="地域" value={fields.regionId} onChange={e=>set('regionId',e.target.value)}><option value="">地域を選択（任意）</option>{requestRegions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>{textField('location','場所','任務を行う場所',0)}</div><p className="quiet text-sm">地域または場所を記載してください。</p></>}<div className="form-grid"><label className="guild-field"><span>期限の指定 <small className="required-mark" aria-hidden="true">必須</small></span><select aria-label="期限の指定" aria-required="true" value={fields.deadlineMode} onChange={e=>set('deadlineMode',e.target.value)}><option value="unknown">未定（公開前に選択）</option><option value="none">期限なし</option><option value="date">日付を指定</option></select></label>{fields.deadlineMode==='date'&&<label className="guild-field"><span>期限 <small className="required-mark" aria-hidden="true">必須</small></span><input aria-label="期限" aria-required="true" type="date" value={fields.deadlineDate} onChange={e=>set('deadlineDate',e.target.value)}/></label>}</div></section>
+ <section><h3>募集・参加条件</h3><div className="form-grid"><label className="guild-field"><span>クエストランク <small className="required-mark" aria-hidden="true">必須</small></span><select aria-label="クエストランク" aria-required="true" value={fields.rank} onChange={e=>set('rank',e.target.value)}><option value="">難易度を選択</option>{questRanks.map(r=><option key={r} value={r}>{r}ランク</option>)}</select></label><label className="guild-field"><span>募集人数 <small className="required-mark" aria-hidden="true">必須</small></span><input aria-label="募集人数" aria-required="true" type="number" inputMode="numeric" min="1" max="100" step="1" value={fields.recruitCount??''} onChange={e=>set('recruitCount',e.target.value===''?null:Number(e.target.value))}/></label><label className="guild-field"><span>参加できる最低ランク</span><select aria-label="参加できる最低ランク" value={fields.minimumRank} onChange={e=>set('minimumRank',e.target.value)}><option value="">ランク制限なし</option>{questRanks.map(r=><option key={r} value={r}>{r}ランク以上</option>)}</select></label>{textField('participationNote','参加条件の補足','例：護衛経験者、回復魔法を使える方',0)}</div></section>
+ <section><h3>達成条件 <small className="required-mark" aria-hidden="true">1件以上必須</small></h3><p className="quiet text-sm">何をすれば完了かを記載します。完了報告でも同じ項目を使います。</p>{checklist.map((item,i)=><div className="checklist-edit" key={i}><span>{i+1}</span><div><label className="guild-field"><span className="sr-only">達成条件 {i+1}</span><input value={item.label} placeholder="例：月光草20束を診療所に届ける" onChange={e=>setChecklist(list=>list.map((x,n)=>n===i?{...x,label:e.target.value}:x))}/></label><label className="guild-field"><span className="sr-only">達成条件 {i+1} の補足</span><input value={item.note} placeholder="必要な納品物・証拠など（任意）" onChange={e=>setChecklist(list=>list.map((x,n)=>n===i?{...x,note:e.target.value}:x))}/></label></div><Button type="button" variant="ghost" size="icon" aria-label={`達成条件 ${i+1} を削除`} onClick={()=>setChecklist(list=>list.filter((_,n)=>n!==i))}><Trash2 size={16}/></Button></div>)}<Button type="button" variant="outline" onClick={()=>setChecklist(list=>[...list,{label:'',note:''}])}><Plus size={16}/>達成条件を追加</Button></section>
+ <section><h3>報酬と仲介料</h3><div className="form-grid"><label className="guild-field"><span>依頼金額（G） <small className="required-mark" aria-hidden="true">必須</small></span><input aria-label="依頼金額（G）" aria-required="true" type="number" inputMode="numeric" min="0" max="999999999" step="1" value={fields.grossReward??''} onChange={e=>set('grossReward',e.target.value===''?null:Number(e.target.value))}/></label><label className="guild-field"><span>仲介料率（％） <small className="required-mark" aria-hidden="true">必須</small></span><input aria-label="仲介料率（％）" aria-required="true" type="number" inputMode="numeric" min="0" max="100" step="1" value={fields.commissionRate??''} onChange={e=>set('commissionRate',e.target.value===''?null:Number(e.target.value))}/></label></div>{fields.grossReward===0&&<p className="quiet">無報酬（0 G）のクエストとして公開します。</p>}<div className="publish-money" aria-live="polite"><span>仲介料：{gold(money.commissionAmount)}</span><strong>冒険者への報酬総額：{gold(money.netReward)}</strong><small>全員分の総額です。仲介料の1 G未満は切り捨てます。</small></div><label className="guild-field"><span>報酬の分配方法 <small className="required-mark" aria-hidden="true">必須</small></span><select aria-label="報酬の分配方法" aria-required="true" value={fields.distributionMode} onChange={e=>set('distributionMode',e.target.value)}><option value="equal">参加者で均等分配（余りは代表者へ）</option><option value="custom">分配方法を指定</option></select></label>{fields.distributionMode==='custom'&&textField('distributionNote','分配方法の説明','例：護衛2名に各400 G、案内役に200 G',2)}</section>
+ <section><h3>集合・出発と補足 <small className="optional-mark">任意</small></h3><p className="quiet text-sm">空欄の場合は「参加決定後に調整」と表示します。</p><div className="form-grid"><label className="guild-field"><span>集合・出発日時（日本時間・任意）</span><input type="datetime-local" value={fields.meetingAt} onChange={e=>set('meetingAt',e.target.value)}/></label>{textField('meetingPlace','集合場所（任意）','例：王都東門',0)}</div>{textField('publicNote','備考・冒険者への補足','危険情報、支給品、必要装備、緊急時の連絡方法など',4)}<p className="quiet text-sm">連絡窓口として担当受付を自動表示します。</p></section>
+ <section><h3>依頼書から公開する資料 <small className="optional-mark">任意</small></h3><p className="quiet text-sm">選んだ資料だけを冒険者に公開します。追加資料と合わせて5件・合計10MBまで。</p>{request.attachments.length?<div className="publish-file-options">{request.attachments.map(file=><div key={file.id}><label><Checkbox checked={attachmentIds.includes(file.id)} onCheckedChange={checked=>setAttachmentIds(ids=>checked?[...ids,file.id]:ids.filter(id=>id!==file.id))}/><span>{file.name}を公開</span></label><RequestAttachments files={[file]}/></div>)}</div>:<p className="quiet">依頼書に添付ファイルはありません。</p>}</section>
+ <section><h3>受付から追加する資料 <small className="optional-mark">任意</small></h3><p className="quiet text-sm">地図や案内を追加できます。ここに追加した資料はクエストと一緒に公開されます。</p><RequestAttachments files={additionalAttachments} reservedFiles={selectedFiles} onChange={files=>{setAdditionalAttachments(files);setSaveNotice('');setError('');}} disabled={pending||filesBusy||!canPublish} onBusyChange={setFilesBusy}/>{attachmentIssue&&<p className="action-error" role="alert">{attachmentIssue}</p>}</section>
+ </div><footer className="document-actions"><Button type="button" variant="outline" onClick={saveDraft}><Save size={16}/>{pending?"保存中…":"下書きを保存"}</Button><Button type="submit"><Eye size={16}/>公開内容を確認</Button></footer></section></fieldset></form>{saveNotice&&<p className="save-notice" role="status">{saveNotice}</p>}</>}
+ </div>;
 }

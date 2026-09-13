@@ -1,103 +1,28 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
-
-export default function ConfirmActionButton({
-  href,
-  requireConfirm = false,
-  confirmTitle = "確認",
-  confirmMessage,
-  confirmLabel = "続行する",
-  cancelLabel = "キャンセル",
-  confirmVariant = "default",
-  confirmClassName,
-  variant = "default",
-  size = "sm",
-  className,
-  ariaLabel,
-  onConfirm,
-  children,
-}) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-
-  const handlePrimaryClick = () => {
-    if (requireConfirm) {
-      setOpen(true);
-      return;
-    }
-    router.push(href);
-  };
-
-  const handleCancel = () => {
+import { Button } from "@/components/quest-ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
+export default function ConfirmActionButton({ href, requireConfirm = false, confirmTitle = "確認", confirmMessage, confirmLabel = "続行する", cancelLabel = "キャンセル", confirmVariant = "default", confirmClassName, variant = "default", size = "sm", className, ariaLabel, onConfirm, children, disabled = false }) { const router = useRouter(); const [open, setOpen] = useState(false), [pending, setPending] = useState(false), [error, setError] = useState(""); const busy = useRef(false); async function confirm() { if (busy.current)
+    return; busy.current = true; setPending(true); setError(""); try {
+    await onConfirm?.();
     setOpen(false);
-  };
-
-  const handleConfirm = async () => {
-    setOpen(false);
-    if (onConfirm) {
-      await onConfirm();
-    }
-    router.push(href);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
-
-  return (
-    <>
-      <Button
-        type="button"
-        size={size}
-        variant={variant}
-        className={className}
-        aria-label={ariaLabel}
-        onClick={handlePrimaryClick}
-      >
-        {children}
-      </Button>
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={handleCancel}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-sm rounded-2xl border border-border/70 bg-white/95 p-5 shadow-lg backdrop-blur"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-[0.32em] text-primary">Confirm</p>
-              <h2 className="text-lg font-semibold text-ink">{confirmTitle}</h2>
-              {confirmMessage ? <p className="text-sm text-muted-foreground">{confirmMessage}</p> : null}
-            </div>
-            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={handleCancel}>
-                {cancelLabel}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={confirmVariant}
-                className={confirmClassName}
-                onClick={handleConfirm}
-              >
-                {confirmLabel}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
-  );
+    if (href)
+        router.push(href);
 }
+catch (e) {
+    setError(e.message || "処理に失敗しました。もう一度お試しください。");
+}
+finally {
+    busy.current = false;
+    setPending(false);
+} } return <><Button type="button" size={size} variant={variant} className={className} aria-label={ariaLabel} disabled={disabled || pending || Boolean(className?.includes("pointer-events-none"))} onClick={() => { if (requireConfirm) {
+    setError("");
+    setOpen(true);
+}
+else if (onConfirm) {
+    confirm();
+}
+else
+    router.push(href); }}>{children}</Button>{!open && error && <p role="alert" className="action-error">{error}</p>}<AlertDialog open={open} onOpenChange={v => { if (!pending)
+    setOpen(v); }}><AlertDialogContent className="guild-dialog"><AlertDialogHeader><p className="eyebrow">GUILD CONFIRMATION</p><AlertDialogTitle className="font-serif text-xl">{confirmTitle}</AlertDialogTitle><AlertDialogDescription>{confirmMessage || "内容を確認して続行してください。"}</AlertDialogDescription></AlertDialogHeader>{error && <p role="alert" className="action-error">{error}</p>}<AlertDialogFooter><AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel><Button type="button" variant={confirmVariant} className={confirmClassName} onClick={confirm} disabled={pending}>{pending ? "処理中…" : confirmLabel}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog></>; }

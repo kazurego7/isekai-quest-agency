@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /.local/
+*.tsbuildinfo
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,10 +17,8 @@
 
 # next.js
 /.next/
+/.vinext/
 /out/
-
-# production
-/build
 
 # misc
 .DS_Store
@@ -38,6 +37,13 @@ yarn-error.log*
 .vercel
 
 # typescript
-*.tsbuildinfo
 next-env.d.ts
-.env*.local
+/dist/
+/.wrangler/
+# Checkout-local execution profile and tool state; never publish them.
+/.sites-runtime/
+/.agents/
+/.codex/
+/outputs/
+/work/
+/npm-cli.js

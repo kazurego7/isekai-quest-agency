@@ -1,151 +1,48 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import prisma from "@/lib/prisma";
-import { publicUserSelect, visibleQuestWhere } from "@/lib/api-data";
-import { ApiError, readJson, transaction, withApiErrors } from "@/lib/api-handler";
-import { authOptions } from "@/lib/auth-options";
-import { assertAuthenticatedSession, isGeneralUser, isReceptionStaff } from "@/lib/authz";
-export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  const actor = assertAuthenticatedSession(session);
-  if (!actor) {
-    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
+import { REQUEST_BODY_BYTES } from "@/lib/request-files";
+import { preparePublicationFiles } from "@/lib/publication-files";
+import { validatePublicBrief,rewardBreakdown,gold } from "@/lib/public-quest";
+import { requireActor } from "@/lib/session";
+import { ApiError,readJson,withApiErrors } from "@/lib/api-handler";
+import { all,first,questDetail,getRequest,getQuest,insert,update,guarded,now,statement } from "@/lib/store";
+export const GET=withApiErrors(async(request)=> {
+  const actor=await requireActor();
+  const ids=await all(`SELECT q.id FROM quests q WHERE ${actor.userType==="staff"?"1":"q.status='募集中' OR q.adventurerId=? OR EXISTS(SELECT 1 FROM selections s JOIN adventurers a ON a.id=s.adventurerId WHERE s.questId=q.id AND a.userId=?)"} ORDER BY q.createdAt DESC`,actor.userType==="staff"?[]:[actor.id,actor.id]);
+  const target=new URL(request.url).searchParams.get("userId");
+  let viewer=actor;
+  if(actor.userType==="staff" && target) viewer=(await first("SELECT id,userType,role FROM users WHERE id=?",[target]))??actor;
+  const quests=[];
+  for(const {id} of ids) {
+    const detail=await questDetail(id,actor);
+    if(viewer.id!==actor.id) detail.viewerAdventurerId=(await first("SELECT id FROM adventurers WHERE userId=?",[viewer.id]))?.id??null;
+    quests.push(detail);
   }
-  if (!isGeneralUser(actor) && !isReceptionStaff(actor)) {
-    return NextResponse.json({ error: "閲覧権限がありません。" }, { status: 403 });
-  }
-  const { searchParams } = new URL(request.url);
-  const requestedUserId = String(searchParams.get("userId") ?? "").trim();
-  const userId = isGeneralUser(actor) ? actor.id : requestedUserId;
-  const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
-  const adventurer =
-    user && user.userType === "general"
-      ? await prisma.adventurer.findUnique({ where: { userId: user.id } })
-      : null;
-
-  const quests = await prisma.quest.findMany({
-    where: isGeneralUser(actor) ? visibleQuestWhere(actor.id) : {},
-    orderBy: { createdAt: "desc" },
-    include: {
-      receptionist: { select: publicUserSelect },
-      adventurer: { select: publicUserSelect },
-      selectedAdventurers: true,
-      applications: adventurer
-        ? {
-            where: { adventurerId: adventurer.id },
-            include: {
-              adventurer: {
-                include: {
-                  user: { select: publicUserSelect },
-                },
-              },
-            },
-          }
-        : false,
-    },
-  });
-  const payload = quests.map((item) => ({
-    ...item,
-    receptionistName: item.receptionist?.displayName ?? null,
-    adventurerName: item.adventurer?.displayName ?? null,
-    selectedAdventurerIds: (item.selectedAdventurers ?? []).map((entry) => entry.adventurerId),
-    applicants: (item.applications ?? []).map((application) => ({
-      id: application.adventurer?.id,
-      name: application.adventurer?.user?.displayName ?? application.adventurer?.name ?? "未設定",
-      rank: application.adventurer?.rank ?? "未設定",
-      role: application.adventurer?.role ?? "未設定",
-      note: application.adventurer?.note ?? "",
-      source: application.adventurer?.source ?? "申請",
-      appliedAt: application.appliedAt,
-    })),
-    viewerAdventurerId: adventurer?.id ?? null,
-  }));
-  return NextResponse.json({ quests: payload });
-}
-
-export const POST = withApiErrors(async (request) => {
-  const session = await getServerSession(authOptions);
-  const actor = assertAuthenticatedSession(session);
-  if (!actor) {
-    return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
-  }
-  if (!isReceptionStaff(actor)) {
-    return NextResponse.json({ error: "受付のみ実行できます。" }, { status: 403 });
-  }
-  const payload = await readJson(request);
-  const requestId = payload.requestId;
-  const publishFields = payload.publishFields ?? {};
-  const checklist = Array.isArray(payload.checklist) ? payload.checklist : [];
-
-  if (!requestId) {
-    return NextResponse.json({ error: "requestIdが必要です。" }, { status: 400 });
-  }
-
-  if (typeof requestId !== "string" || !publishFields || typeof publishFields !== "object" ||
-    Array.isArray(publishFields) || Object.values(publishFields).some((value) => value != null && typeof value !== "string") ||
-    checklist.length > 100 || checklist.some((item) => !item || typeof item.label !== "string" || !item.label.trim() ||
-      (item.note != null && typeof item.note !== "string"))) {
-    throw new ApiError(400, "クエストの入力内容が不正です。");
-  }
-  const created = await transaction(async (tx) => {
-    const sourceRequest = await tx.request.findUnique({ where: { id: requestId } });
-    if (!sourceRequest) throw new ApiError(404, "依頼が見つかりません。");
-    if (sourceRequest.status !== "合意済み" || !sourceRequest.requesterAgreed || !sourceRequest.receptionistAgreed) {
-      throw new ApiError(409, "合意済みの依頼のみクエスト化できます。");
-    }
-    const quest = await tx.quest.create({
-      data: {
-        requestId: sourceRequest.id,
-        title: sourceRequest.title,
-        status: "募集中",
-        receptionistId: actor.id,
-        reward: sourceRequest.reward ?? null,
-        risk: sourceRequest.risk ?? null,
-        rank: publishFields.rank ?? null,
-        slots: publishFields.slots ?? null,
-        detail: publishFields.detail ?? null,
-        deliverables: publishFields.deliverables ?? null,
-        supplies: publishFields.supplies ?? null,
-        mapNotes: publishFields.mapNotes ?? null,
-        channel: publishFields.channel ?? null,
-        summary: "受付がクエスト票を作成済み。募集中。",
-        checklist: checklist.map((item) => ({
-          label: String(item.label ?? "").trim(),
-          note: String(item.note ?? "").trim(),
-          checked: false,
-        })),
-        photos: [],
-      },
-    });
-
-    await tx.request.update({
-      where: { id: sourceRequest.id },
-      data: {
-        status: "クエスト化済み",
-        notes: "クエスト化が完了し、冒険者の募集を開始しました。",
-        receptionistId: actor.id,
-      },
-    });
-
-    return quest;
-  });
-
-  const loaded = await prisma.quest.findUnique({
-    where: { id: created.id },
-    include: {
-      receptionist: { select: publicUserSelect },
-      adventurer: { select: publicUserSelect },
-    },
-  });
-
-  return NextResponse.json(
-    {
-      quest: {
-        ...loaded,
-        receptionistName: loaded?.receptionist?.displayName ?? null,
-        adventurerName: loaded?.adventurer?.displayName ?? null,
-      },
-    },
-    { status: 201 },
-  );
+  return Response.json({quests});
+});
+export const POST=withApiErrors(async(request)=> {
+  const actor=await requireActor("staff"),payload=await readJson(request,REQUEST_BODY_BYTES);
+  const fields=payload.publishFields,checklist=payload.checklist;
+  if(typeof payload.requestId!=="string")throw new ApiError(400,"依頼を選択してください。");
+  const problem=validatePublicBrief(fields,checklist);if(problem)throw new ApiError(400,problem);
+  const source=await getRequest(payload.requestId);
+  if(!source) throw new ApiError(404,"依頼が見つかりません。");
+  if(source.status!=="合意済み" || !source.requesterAgreed || !source.receptionistAgreed) throw new ApiError(409,"合意済みの依頼のみクエスト化できます。");
+  const id=crypto.randomUUID(),stamp=now();
+  const selected=payload.attachmentIds??[];
+  const draft=await first("SELECT * FROM publicationDrafts WHERE id=?",[source.id]);
+  if((draft?.revision??null)!==(payload.draftRevision??null))throw new ApiError(409,"公開準備の下書きが更新されています。再読み込みして確認してください。");
+  const files=await preparePublicationFiles(source,draft,selected,payload.additionalAttachments??[]);
+  const publish=Object.fromEntries(["title","categoryId","detail","regionId","location","publicNote","rank","minimumRank","participationNote","distributionMode","distributionNote","meetingAt","meetingPlace"].map(key=>[key,fields[key]?.trim()||null]));
+  Object.assign(publish,{publishVersion:1,locationMode:fields.locationMode,deadlineMode:fields.deadlineMode,deadlineDate:fields.deadlineMode==="date"?fields.deadlineDate:null,recruitCount:fields.recruitCount,slots:String(fields.recruitCount),grossReward:fields.grossReward,commissionRate:fields.commissionRate,...rewardBreakdown(fields.grossReward,fields.commissionRate),publicAttachments:JSON.stringify(files.items)});
+  if(fields.locationMode==="after-selection"){publish.location=null;publish.regionId=null;}
+  publish.reward=gold(publish.netReward);
+  const token=crypto.randomUUID();
+  try {await guarded("requests",source.id,source.revision,[
+    statement("INSERT INTO mutationGuard(id,valid) VALUES (?, (SELECT CASE WHEN ? IS NULL THEN NOT EXISTS(SELECT 1 FROM publicationDrafts WHERE id=?) ELSE EXISTS(SELECT 1 FROM publicationDrafts WHERE id=? AND revision=?) END))",[token,draft?.revision??null,source.id,source.id,draft?.revision??null]),
+    insert("quests",{id,requestId:source.id,status:"募集中",receptionistId:actor.id,...publish,summary:"受付がクエスト票を作成済み。募集中。",checklist:JSON.stringify(checklist.map(x=>({label:x.label.trim(),note:x.note?.trim()??"",checked:false}))),photos:"[]",createdAt:stamp,updatedAt:stamp}),
+    statement("DELETE FROM publicationDrafts WHERE id=?",[source.id]),
+    update("requests",source.id,{status:"クエスト化済み",notes:"クエスト化が完了し、冒険者の募集を開始しました。",receptionistId:actor.id}),
+    statement("DELETE FROM mutationGuard WHERE id=?",[token]),
+  ]);}catch(error){await files.rollback();throw error;}
+  await files.cleanup();
+  return Response.json({quest:await getQuest(id)},{status:201});
 });

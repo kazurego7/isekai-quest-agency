@@ -1,0 +1,1 @@
+ALTER TABLE `publicationDrafts` ADD `additionalAttachments` text DEFAULT '[]' NOT NULL;
